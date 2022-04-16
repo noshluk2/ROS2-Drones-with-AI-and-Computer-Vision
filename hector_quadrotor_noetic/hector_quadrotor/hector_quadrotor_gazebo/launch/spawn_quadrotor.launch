@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+
+<launch>
+  <arg name="name" default="quadrotor"/>
+  <arg name="model" default="$(find hector_quadrotor_description)/urdf/quadrotor.gazebo.xacro"/>
+  <arg name="tf_prefix" default="$(optenv ROS_NAMESPACE)"/>
+  <arg name="controller_definition" default="$(find hector_quadrotor_controller)/launch/controller.launch"/>
+
+  <arg name="x" default="0"/>
+  <arg name="y" default="0"/>
+  <arg name="z" default="0.3"/>
+
+
+  <arg name="world_frame" default="world"/>
+    <arg name="base_link_frame" default="$(arg tf_prefix)/base_link"/>
+  <param name="robot_description" command="$(find xacro)/xacro '$(arg model)' base_link_frame:=$(arg base_link_frame) world_frame:=$(arg world_frame)" />
+
+
+  <node name="spawn_robot" pkg="gazebo_ros" type="spawn_model"
+        args="-param robot_description
+           -urdf
+           -x $(arg x)
+           -y $(arg y)
+           -z $(arg z)
+           -model $(arg name)"
+        respawn="false" output="screen"/>
+
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen" >
+    <param name="publish_frequency" type="double" value="50.0" />
+  </node>
+
+  <include file="$(arg controller_definition)" />
+
+  <arg name="motors" default="robbe_2827-34_epp1045" />
+  <rosparam command="load" file="$(find hector_quadrotor_model)/param/quadrotor_aerodynamics.yaml" />
+  <rosparam command="load" file="$(find hector_quadrotor_model)/param/$(arg motors).yaml" />
+
+</launch>
