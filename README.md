@@ -57,3 +57,7 @@ roslaunch drone_basic farm.launch
 ```
 roslaunch drone_basic racetrack.launch
 ```
+<<<<<<< HEAD
+=======
+
+>>>>>>> 14a7a8c94282b315f7ab5f2ca9ceb7a20a375d62
