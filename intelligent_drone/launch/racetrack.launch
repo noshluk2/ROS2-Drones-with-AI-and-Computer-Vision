@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find intelligent_drone)/models/racetrack"/>
+  <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find intelligent_drone)/models/racetrack"/>
+
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find intelligent_drone)/worlds/racetrack_day.world"/>
+    <arg name="paused" value="false"/>
+    <arg name="gui" value="true"/>
+  </include>
+
+
+   <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
+    <arg name="name" default="chirya"/>
+    <arg name="model" value="$(find intelligent_drone)/urdf/hector_camera_laser.urdf.xacro"/>
+    <arg name="x" value="-8.33"/>
+    <arg name="y" value="-15.23"/>
+    <arg name="z" value="0.3"/>
+   </include>
+
+  <group ns="tb3">
+    <param name="robot_description_tb3" command="$(find xacro)/xacro --inorder $(find turtlebot3_description)/urdf/turtlebot3_burger.urdf.xacro" />
+    <node pkg="gazebo_ros" type="spawn_model" name="spawn_urdf_tb3" args="-urdf -model turtlebot3_burger -x -5.1 -y -14.1 -z 0 -param robot_description_tb3" />
+  </group>
+
+
+
+
+<!-- Node remapping   :   rosrun teleop_twist_keyboard teleop_twist_keyboard.py cmd_vel:=cmmd_vel -->
+</launch>
