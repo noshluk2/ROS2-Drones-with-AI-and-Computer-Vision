@@ -17,7 +17,7 @@
     <xacro:generic_camera name="front_cam" parent="base_link" ros_topic="front_cam/image"
                           cam_info_topic="front_cam/camera_info" update_rate="10" res_x="1280" res_y="1080"
                           image_format="R8G8B8" hfov="90">
-      <origin xyz="0.4 0 0 " rpy="0 0.57 0"/>
+      <origin xyz="0.4 0 0 " rpy="0 1.57 0"/>
     </xacro:generic_camera>
 
 

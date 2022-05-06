@@ -7,7 +7,6 @@ from turtlesim.msg import Pose
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 class TurtleBot:
-
     def __init__(self):
         rospy.init_node('turtlebot_controller', anonymous=True)
         self.velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
@@ -16,13 +15,13 @@ class TurtleBot:
         self.robot_pos_x =0.0;self.robot_pos_y=0.0;self.robot_orientation_z=0.0;
         self.angle_to_goal=0.0;self.distance_to_goal=0.0;
         self.rate = rospy.Rate(10)
-        
+
     def pose_callback(self, data):
         self.pose_msg = data
         self.robot_pos_x = round(self.pose_msg.pose[1].position.x, 4)
         self.robot_pos_y = round(self.pose_msg.pose[1].position.y, 4)
         self.robot_orientation_z = round(self.pose_msg.pose[1].orientation.z, 4)
-        orientation_list = [self.pose_msg.pose[1].orientation.x, self.pose_msg.pose[1].orientation.y, 
+        orientation_list = [self.pose_msg.pose[1].orientation.x, self.pose_msg.pose[1].orientation.y,
                             self.pose_msg.pose[1].orientation.z, self.pose_msg.pose[1].orientation.w]
         (roll, pitch, yaw) = euler_from_quaternion (orientation_list)
         # print(self.robot_pos_x," / ",self.robot_pos_y," / ",self.robot_orientation_z ,"\n")
@@ -51,11 +50,11 @@ class TurtleBot:
             # vel_msg.linear.x = self.linear_vel(goal_pose)
             # vel_msg.angular.z = self.angular_vel(goal_pose)
             # self.velocity_publisher.publish(vel_msg)
-            
+
             self.rate.sleep()
         vel_msg.linear.x = 0
         vel_msg.angular.z = 0
-        
+
         # self.velocity_publisher.publish(vel_msg)
         rospy.spin()
 

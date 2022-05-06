@@ -28,6 +28,14 @@
     - Multi Robot Spawning -> groups
     - ROS bags for driving robots
 
+### Installation
+sudo apt-get install ros-noetic-turtlebot3-gazebo
+sudo apt-get install ros-noetic-turtlebot3-simulations
+sudo apt-get install ros-noetic-teleop-twist-keyboard
+sudo apt-get install ros-foxy-joint-state-publisher
+sudo apt-get install ros-foxy-robot-state-publisher
+sudo apt-get install ros-foxy-gazebo-plugins
+
 
 ### Launch Files
 - **drone.launch** :  Brings in only the drone and turtleBot3
@@ -39,25 +47,22 @@
 - Bring this package into your workspace/src/"clone here"
 - Source ROS and workspace
 - Build workspace
--Install required packages
+- Install required packages
     - geographic msgs
     - state publishers
     - gazebo-ros
 
+
 - Launch worlds and drone with the following command
 ```
-roslaunch drone_basic drone.launch
+roslaunch intelligent_drone drone.launch
 ```
 ```
-roslaunch drone_basic warehouse.launch
+roslaunch intelligent_drone warehouse.launch
 ```
 ```
-roslaunch drone_basic farm.launch
+roslaunch intelligent_drone farm.launch
 ```
 ```
-roslaunch drone_basic racetrack.launch
+roslaunch intelligent_drone racetrack.launch
 ```
-<<<<<<< HEAD
-=======
-
->>>>>>> 14a7a8c94282b315f7ab5f2ca9ceb7a20a375d62

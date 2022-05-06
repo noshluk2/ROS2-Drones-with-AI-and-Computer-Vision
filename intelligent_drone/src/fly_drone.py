@@ -6,7 +6,7 @@ from sensor_msgs.msg import Range
 
 
 def talker():
-    global velocity_msg , pub 
+    global velocity_msg , pub
     pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
     rospy.Subscriber("/sonar_height", Range, sonar_callback)
     rospy.init_node('fly_node', anonymous=True)
@@ -17,7 +17,7 @@ def talker():
 def sonar_callback(msg):
     global velocity_msg , pub
     sonar_data=msg.range
-    if(sonar_data>=2.8):
+    if(sonar_data>=2.0):
         velocity_msg.linear.z=0.0
         print("Reaching the Point")
     else:
@@ -27,7 +27,7 @@ def sonar_callback(msg):
 
     pub.publish(velocity_msg)
 
-    print("Sonar Values : " , sonar_data) 
+    print("Sonar Values : " , sonar_data)
 
 
 

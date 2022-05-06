@@ -35,7 +35,7 @@ xmlns:xacro="http://ros.org/wiki/xacro">
     <gazebo reference="${name}_link">
       <sensor type="ray" name="${name}">
         <update_rate>${update_rate}</update_rate>
-        <visualize>true</visualize>
+        <visualize>false</visualize>
         <ray>
           <range>
             <min>${min_range}</min>
