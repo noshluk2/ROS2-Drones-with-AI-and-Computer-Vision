@@ -19,7 +19,8 @@ def sonar_callback(msg):
     sonar_data=msg.range
     if(sonar_data>=2.0):
         velocity_msg.linear.z=0.0
-        print("Reaching the Point")
+        print("Reached the Point")
+        # rospy.signal_shutdown("As")
     else:
         velocity_msg.linear.z=0.5
         print("Reaching set point")
