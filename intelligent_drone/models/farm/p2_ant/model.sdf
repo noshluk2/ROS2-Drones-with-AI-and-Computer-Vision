@@ -18,7 +18,7 @@
         <pose>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
-            <uri>/home/luqman/blender_projects/meshes/farm/p2_ant.dae</uri>
+            <uri>model://p2_ant/resource/p2_ant.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>
@@ -32,7 +32,7 @@
         <pose>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
-            <uri>/home/luqman/blender_projects/meshes/farm/p2_ant.dae</uri>
+            <uri>model://p2_ant/resource/p2_ant.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>

@@ -18,7 +18,7 @@
         <pose>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
-             <uri>model://p1_ws/p1_ws.dae</uri>
+             <uri>model://p1_ws/resource/p1_ws.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>
@@ -39,7 +39,7 @@
         <pose>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
-             <uri>model://p1_ws/p1_ws.dae</uri>
+             <uri>model://p1_ws/resource/p1_ws.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>

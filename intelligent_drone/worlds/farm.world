@@ -735,7 +735,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p1_ant.dae</uri>
+              <uri>model://p1_ant/resource/p1_ant.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -748,7 +748,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p1_ant.dae</uri>
+              <uri>model://p1_ant/resource/p1_ant.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -917,7 +917,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p1_full.dae</uri>
+              <uri>model://p1_full/resource/p1_full.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -930,7 +930,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p1_small.dae</uri>
+              <uri>model://p1_full/resource/p1_full.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1006,7 +1006,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_full.dae</uri>
+              <uri>model://p2_full/resource/p2_full.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1019,7 +1019,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_full.dae</uri>
+              <uri>model://p2_full/resource/p2_full.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1095,7 +1095,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_full.dae</uri>
+              <uri>model://p3_full/resource/p3_full.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1108,7 +1108,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_full.dae</uri>
+              <uri>model://p3_full/resource/p3_full.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1184,7 +1184,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p1_small.dae</uri>
+              <uri>model://p1_small/resource/p1_small.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1197,7 +1197,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p1_small.dae</uri>
+              <uri>model://p1_small/resource/p1_small.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1273,7 +1273,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_small.dae</uri>
+              <uri>model://p3_small/resource/p3_small.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1286,7 +1286,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_small.dae</uri>
+              <uri>model://p3_small/resource/p3_small.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1362,7 +1362,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_small.dae</uri>
+              <uri>model://p2_small/resource/p2_small.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1375,7 +1375,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_small.dae</uri>
+              <uri>model://p2_small/resource/p2_small.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1451,7 +1451,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_ant.dae</uri>
+              <uri>model://p2_ant/resource/p2_ant.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1464,7 +1464,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_ant.dae</uri>
+              <uri>model://p2_ant/resource/p2_ant.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1540,7 +1540,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_ant.dae</uri>
+              <uri>model://p3_ant/resource/p3_ant.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1553,7 +1553,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_ant.dae</uri>
+              <uri>model://p3_ant/resource/p3_ant.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1629,7 +1629,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p1_ws.dae</uri>
+              <uri>model://p1_ws/resource/p1_ws.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1642,7 +1642,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p1_ws.dae</uri>
+              <uri>model://p1_ws/resource/p1_ws.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1718,7 +1718,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_ws.dae</uri>
+              <uri>model://p2_ws/resource/p2_ws.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1731,7 +1731,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_ws.dae</uri>
+              <uri>model://p2_ws/resource/p2_ws.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1807,7 +1807,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_ws.dae</uri>
+              <uri>model://p3_ws/resource/p3_ws.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1820,7 +1820,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_ws.dae</uri>
+              <uri>model://p3_ws/resource/p3_ws.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1896,7 +1896,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p1_ant.dae</uri>
+              <uri>model://p1_ant/resource/p1_ant.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1909,7 +1909,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p1_ant.dae</uri>
+              <uri>model://p1_ant/resource/p1_ant.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1985,7 +1985,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p1_full.dae</uri>
+              <uri>model://p1_full/resource/p1_full.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -1998,7 +1998,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p1_small.dae</uri>
+              <uri>model://p1_full/resource/p1_full.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2074,7 +2074,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_full.dae</uri>
+              <uri>model://p3_full/resource/p3_full.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2087,7 +2087,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_full.dae</uri>
+              <uri>model://p3_full/resource/p3_full.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2163,7 +2163,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_small.dae</uri>
+              <uri>model://p3_small/resource/p3_small.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2176,7 +2176,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_small.dae</uri>
+              <uri>model://p3_small/resource/p3_small.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2252,7 +2252,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_full.dae</uri>
+              <uri>model://p2_full/resource/p2_full.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2265,7 +2265,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_full.dae</uri>
+              <uri>model://p2_full/resource/p2_full.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2341,7 +2341,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_ant.dae</uri>
+              <uri>model://p2_ant/resource/p2_ant.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2354,7 +2354,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_ant.dae</uri>
+              <uri>model://p2_ant/resource/p2_ant.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2430,7 +2430,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_ws.dae</uri>
+              <uri>model://p2_ws/resource/p2_ws.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2443,7 +2443,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_ws.dae</uri>
+              <uri>model://p2_ws/resource/p2_ws.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2519,7 +2519,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p1_small.dae</uri>
+              <uri>model://p1_small/resource/p1_small.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2532,7 +2532,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p1_small.dae</uri>
+              <uri>model://p1_small/resource/p1_small.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2608,7 +2608,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_small.dae</uri>
+              <uri>model://p2_small/resource/p2_small.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2621,7 +2621,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_small.dae</uri>
+              <uri>model://p2_small/resource/p2_small.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2697,7 +2697,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_full.dae</uri>
+              <uri>model://p2_full/resource/p2_full.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2710,7 +2710,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_full.dae</uri>
+              <uri>model://p2_full/resource/p2_full.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2786,7 +2786,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_ant.dae</uri>
+              <uri>model://p3_ant/resource/p3_ant.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2799,7 +2799,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_ant.dae</uri>
+              <uri>model://p3_ant/resource/p3_ant.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2875,7 +2875,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_ws.dae</uri>
+              <uri>model://p3_ws/resource/p3_ws.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2888,7 +2888,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p3_ws.dae</uri>
+              <uri>model://p3_ws/resource/p3_ws.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2964,7 +2964,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_small.dae</uri>
+              <uri>model://p2_small/resource/p2_small.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -2977,7 +2977,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>/home/luqman/blender_projects/meshes/farm/p2_small.dae</uri>
+              <uri>model://p2_small/resource/p2_small.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>

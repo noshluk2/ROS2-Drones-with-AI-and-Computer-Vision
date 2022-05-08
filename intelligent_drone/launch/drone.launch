@@ -1,6 +1,10 @@
 <?xml version="1.0"?>
 
 <launch>
+
+
+  <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find intelligent_drone)/models/farm"/>
+  <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find intelligent_drone)/models/farm"/>
   <arg name="x_pos" default="3.0"/>
   <arg name="y_pos" default="0.0"/>
   <arg name="z_pos" default="0.0"/>
