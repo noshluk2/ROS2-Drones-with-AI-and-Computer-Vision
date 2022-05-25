@@ -17,7 +17,7 @@ def talker():
 def sonar_callback(msg):
     global velocity_msg , pub
     sonar_data=msg.range
-    if(sonar_data>=2.0):
+    if(sonar_data>=6.4):
         velocity_msg.linear.z=0.0
         print("Reaching the Point")
     else:
