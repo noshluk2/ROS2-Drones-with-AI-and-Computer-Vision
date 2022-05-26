@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import rospy
 from gazebo_msgs.srv import GetModelState
 from math import degrees,atan2,asin
@@ -19,5 +18,3 @@ def euler_from_quaternion(x, y, z, w):
     yaw_z = atan2(t3, t4)
 
     return roll_x, pitch_y, yaw_z # in radians
-
-

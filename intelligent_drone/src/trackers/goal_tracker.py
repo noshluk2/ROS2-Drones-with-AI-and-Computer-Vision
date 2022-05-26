@@ -3,7 +3,7 @@ import sys
 from random import randint
 
 
-class TL_Tracker:
+class Tracker:
 
     def __init__(self):
 

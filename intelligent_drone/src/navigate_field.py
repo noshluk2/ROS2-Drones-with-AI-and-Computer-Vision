@@ -19,8 +19,8 @@ import numpy as np
 from numpy import interp
 import os
 
-from drone_motionplanning import bot_motionplanner
-from goal_tracker_3 import TL_Tracker
+from motionplanners.drone_motionplanning import bot_motionplanner
+from goal_tracker import Tracker
 
 
 from utilities import euler_from_quaternion 
@@ -50,7 +50,7 @@ class vision_drive:
     self.img_no = 0
 
     self.drone_motionplanner = bot_motionplanner()
-    self.TL_Tracker_ = TL_Tracker()
+    self.TL_Tracker_ = Tracker()
     
     self.sonar_curr = 0
 

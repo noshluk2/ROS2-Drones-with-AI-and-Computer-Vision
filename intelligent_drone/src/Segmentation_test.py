@@ -8,8 +8,7 @@ import os
 import tensorflow as tf # tensorflow imported to check installed tf version
 from tensorflow.keras.models import load_model # import load_model function to load trained CNN model for Sign classification
 
-from Our_EstimationAlgo import remove_outliers,dist
-from utilities import get_centroid
+from utilities.utilities import get_centroid,remove_outliers,dist
 
 model_loaded = False
 model = 0
