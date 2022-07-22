@@ -15,7 +15,7 @@ class Tracker:
         self.tracked_bboxes = []
         self.colors =[]
 
-    def track_and_retrive_goal_loc(self,frame,frame_draw):
+    def track_multiple(self,frame,frame_draw,bboxes=[]):
 
         # 4. Checking if SignTrack Class mode is Tracking If yes Proceed
         if(self.mode == "Tracking"):
@@ -30,7 +30,9 @@ class Tracker:
                 for rct in boxes:
                     #rct = boxes[0]
                     self.tracked_bboxes.append((round(rct[0],1),round(rct[1],1),round(rct[2],1),round(rct[3],1)))
-
+            else:
+                print("Tracking Failed")
+                
             # Calculate Frames per second (FPS)
             fps = cv2.getTickFrequency() / (cv2.getTickCount() - timer)
 
@@ -54,28 +56,9 @@ class Tracker:
         # 3. If SignTrack is in Detection Proceed to intialize tracker
         elif (self.mode == "Detection"):
             
-            # Select boxes
-            bboxes = []
-
-            # OpenCV's selectROI function doesn't work for selecting multiple objects in Python
-            # So we will call this function in a loop till we are done selecting all objects
-            while True:
-                # draw bounding boxes over objects
-                # selectROI's default behaviour is to draw box starting from the center
-                # when fromCenter is set to false, you can draw box starting from top left corner
-                bbox = cv2.selectROI('MultiTracker', frame)
-                bboxes.append(bbox)
+            for i in range(len(bboxes)):
                 self.colors.append((randint(0, 255), randint(0, 255), randint(0, 255)))
-                print("Press q to quit selecting boxes and start tracking")
-                print("Press any other key to select next object")
-                k = cv2.waitKey(0) & 0xFF
-                print (k)
-                if (k == 113):  # q is pressed
-                    cv2.destroyWindow('MultiTracker')
-                    break
 
-            print('Selected bounding boxes {}'.format(bboxes))
-            
             # Initialize MultiTracker
             for bbox in bboxes:
                 if bbox != (0,0,0,0):

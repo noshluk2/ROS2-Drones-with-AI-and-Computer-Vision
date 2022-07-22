@@ -38,27 +38,14 @@ pygame.mixer.init()
 pygame.mixer.music.load(os.path.abspath('intelligent_drone/resource/aud_chomp.mp3'))
 
 
-class bot_motionplanner():
+class drone_motionplanner():
 
 
     def __init__(self):
 
-        # counter to move car forward for a few iterations
-        self.count = 0
-        # State Variable => Initial Point Extracted?
-        self.pt_i_taken = False
-        # [Container] => Store Initial car location
-        self.init_loc = 0
-
-        # State Variable => Angle relation computed?
-        self.angle_relation_computed = False
-
         # [Container] => Bot Angle [Image]
-        self.bot_angle = 0
-        # [Container] => Bot Angle [Simulation]
-        self.bot_angle_s = 0
-        # [Container] => Angle Relation Bw(Image & Simulation)
-        self.bot_angle_rel = 0
+        self.bot_angle = 90
+
         # State Variable ==> (Maze Exit) Not Reached ?
         self.goal_not_reached_flag = True
         # [Containers] ==> Mini-Goal (X,Y)
@@ -66,23 +53,6 @@ class bot_motionplanner():
         self.goal_pose_y = 0
         # [Iterater] ==> Current Mini-Goal iteration
         self.path_iter = 0
-
-        # [Containers] Previous iteration Case [Angle or Dist or Mini_Goal]
-        self.prev_angle_to_turn = 0
-        self.Prev_distance_to_goal = 0
-        self.prev_path_iter = 0
-
-        # [Iterators] Iterations elapsed since no change or backpeddling
-        self.angle_not_changed = 0
-        self.dist_not_changed = 0
-        self.goal_not_changed =0
-        self.goal_not_changed_long =0
-        self.backpeddling = 0
-
-        # [State Variables] Stuck on Wall? Ready to backpeddle
-        self.trigger_backpeddling = False
-        # [State Variables] Can't reach goal? Try next appropriate one
-        self.trigger_nxtpt = False
 
         self.curr_speed = 0
         self.curr_angle = 0
@@ -264,20 +234,20 @@ class bot_motionplanner():
 
 
 
-    def nav_path(self,bot_loc,path,max_dist,velocity,velocity_publisher):
+    def nav_path(self,bot_loc,path,max_dist,velocity,velocity_publisher,state):
         
         
         # If valid path Founds
-        if (type(path)!=int):
+        if ((type(path)!=int) and path!=[]):
             # Trying to reach first mini-goal
             #if (self.path_iter==0):
             self.goal_pose_x = path[self.path_iter][0]
             self.goal_pose_y = path[self.path_iter][1]
 
+            # Traversing through found path to reach goal
+            self.go_to_goal(bot_loc,path,max_dist,velocity,velocity_publisher)
+        elif ((path==[]) and (state=="Navigating_row")):
+            velocity.linear.x = 0.10
+            velocity_publisher.publish(velocity)
 
-        # [For noob luqman] : Extracting Car angle [From Simulation angle & S-I Relation]
-        self.bot_angle = 90
-
-        # Traversing through found path to reach goal
-        self.go_to_goal(bot_loc,path,max_dist,velocity,velocity_publisher)
 

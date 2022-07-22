@@ -3,6 +3,17 @@ import cv2
 import numpy as np
 import math
 
+def moving_average(numbers,window_size=3):
+
+    i = 0
+    moving_averages = []
+    while i < len(numbers) - window_size + 1:
+        this_window = numbers[i : i + window_size]
+        window_average = sum(this_window) / window_size
+        moving_averages.append(window_average)
+        i += 1
+
+    print(moving_averages)
 
 def get_centroid(cnt):
     M = cv2.moments(cnt)
@@ -14,9 +25,99 @@ def get_centroid(cnt):
         cy = int(M['m01']/M['m00'])
         return (cx,cy)
 
+def ret_centroid(img,cnts):
 
+    img_centroids = np.zeros_like(img)
+    prob_centroids = []
+    for idx,cnt in enumerate(cnts):
+        cnt_center = get_centroid(cnt)
+        img_centroids = cv2.circle(img_centroids, cnt_center, 5, 255,-1)
+        prob_centroids.append(cnt_center)
+    return prob_centroids,img_centroids
+
+
+def find_line_parameters(a,b):
+    m = 999
+    y_inter = 0
+    
+    # For horizontal line (m = 0 ) then equation is y = b (y_intercept)
+
+    # If not a vertical line , has a defined slope ,Else equation would be x = k 
+    if (a[0]-b[0])!=0:
+        m = (a[1]-b[1])/(a[0]-b[0])
+
+    # b = y_0 - m*x_0
+    y_inter = a[1]-(m*a[0])
+
+    return m,y_inter
+    
 def dist(a,b):
     return math.sqrt( ( (a[1]-b[1])**2 ) + ( (a[0]-b[0])**2 ) )
+
+def dist_pt_line(pt,m,b):
+    # Todo: Handle Exceptional Cases [Horizontal + Vertical Lines]
+    # Start by finding the point on line where perpendicular drawn from point intersects the original line
+    (x1,y1) = pt
+    x = ( (-b*m + x1 + m*y1) / (1 + (m*m)) )
+    y = m*x + b
+
+    return dist(pt,(x,y))
+
+def estimate_pt(pta,ptb,case ="start"):
+    x1,y1 = pta
+    x2,y2 = ptb
+    if case == "start":
+        return (x1*2-x2,y1*2-y2)
+    else:
+        return (x2*2-x1,y2*2-y1)
+
+
+def imfill(im_th,display_intermediates = False):
+    #th, im_th = cv2.threshold(gray, 220, 255, cv2.THRESH_BINARY_INV);
+    # Copy the thresholded image.
+    im_floodfill = im_th.copy()
+
+    # Mask used to flood filling.
+    # Notice the size needs to be 2 pixels than the image.
+    h, w = im_th.shape[:2]
+    mask = np.zeros((h+2, w+2), np.uint8)
+
+    # Floodfill from point (0, 0)
+    cv2.floodFill(im_floodfill, mask, (0,0), 255)
+
+    # Invert floodfilled image
+    im_floodfill_inv = cv2.bitwise_not(im_floodfill)
+
+    # Combine the two images to get the foreground.
+    im_out = im_th | im_floodfill_inv
+
+    # Display images.
+    if display_intermediates:
+        cv2.imshow("Thresholded Image", im_th)
+        cv2.imshow("Floodfilled Image", im_floodfill)
+        cv2.imshow("Inverted Floodfilled Image", im_floodfill_inv)
+        cv2.imshow("Foreground", im_out)
+        cv2.waitKey(0)
+
+    im_out = remove_outliers(im_out,400)
+
+    cnts = cv2.findContours(im_out, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0]
+    im_out_centroids = np.zeros_like(im_out)
+    prob_regs = []
+    prob_cnts = []
+    prob_centroids = []
+    for idx,cnt in enumerate(cnts):
+        if cv2.contourArea(cnt)<200:
+            im_out = cv2.drawContours(im_out, cnts, idx, 0,-1)
+        else:
+            cnt_center = get_centroid(cnt)
+            im_out_centroids = cv2.circle(im_out_centroids, cnt_center, 5, 255,-1)
+            x,y,w,h = cv2.boundingRect(cnt)
+            prob_regs.append([x,y,w,h])
+            prob_cnts.append(cnt)
+            prob_centroids.append(cnt_center)
+    
+    return im_out,im_out_centroids,prob_regs,prob_cnts,prob_centroids
 
 def ApproxDistBWCntrs(cnt,cnt_cmp):
     # compute the center of the contour
@@ -49,8 +150,6 @@ def RetLargestContour(gray):
     if (Max_Cntr_idx!=-1):
         thresh = cv2.drawContours(thresh, cnts, Max_Cntr_idx, (255,255,255), -1) # [ contour = less then minarea contour, contourIDx, Colour , Thickness ]
     return thresh, LargestContour_Found
-
-
 
 def remove_outliers(BW,MaxDistance,display_connections = False):
 
