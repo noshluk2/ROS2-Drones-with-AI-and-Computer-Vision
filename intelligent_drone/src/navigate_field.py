@@ -23,6 +23,8 @@ from motionplanners.drone_motionplanning import drone_motionplanner
 from trackers.goal_tracker import Tracker
 
 from utilities.utitlities_pi import euler_from_quaternion,calc_focalLen_h_pix
+from utilities.utilities import ordrpts,imshow
+
 from math import sin,cos,pi,degrees,radians
 from gazebo_msgs.srv import GetModelState
 
@@ -55,7 +57,9 @@ class vision_drive:
     
     self.sonar_curr = 0
 
-    self.occupncy_grd = np.zeros((540,960,3),np.uint8)
+    # [CSLAM] Map generated while drone navigating on field
+    self.c_slam_map = np.zeros((540,960,3),np.uint8)
+
     ## rosservice call /gazebo/get_model_state "drone_model: 'chirya'"
     self.model_state_obj = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
     self.drone_pose = []
@@ -87,6 +91,7 @@ class vision_drive:
               if self.img_w!=0:
                 altitude_m = sonar_data
                 altitude_mm = altitude_m * 1000
+                # Ground Sampling distance(decimeter/pix)
                 self.GSD = (altitude_mm / self.foclen_h_mm) / 100
                 self.GSD_x_cm = self.GSD * self.img_w
                 self.GSD_y_cm = self.GSD * self.img_h
@@ -100,8 +105,8 @@ class vision_drive:
 
       self.sonar_curr = sonar_data
       print("Sonar Values : " , sonar_data)
-      print("focal_len = {}".format(self.foclen_h_mm))
-      print("GSD = {} , GSD_x_deci_m = {}, GSD_y_deci_m = {}".format(self.GSD,self.GSD_x_cm,self.GSD_y_cm))
+      #print("focal_len = {}".format(self.foclen_h_mm))
+      #print("GSD = {} , GSD_x_deci_m = {}, GSD_y_deci_m = {}".format(self.GSD,self.GSD_x_cm,self.GSD_y_cm))
 
 
 
@@ -174,22 +179,22 @@ class vision_drive:
     # Point 0
     rotated_x = math.cos(theta) * (pt0[0] - cx) + math.sin(theta) * (pt0[1] - cy) + cx
     rotated_y = -math.sin(theta) * (pt0[0] - cx) + math.cos(theta) * (pt0[1] - cy) + cy
-    point_0 = (rotated_x, rotated_y)
+    point_0 = (int(rotated_x), int(rotated_y))
 
     # Point 1
     rotated_x = math.cos(theta) * (pt1[0] - cx) + math.sin(theta) * (pt1[1] - cy) + cx
     rotated_y = -math.sin(theta) * (pt1[0] - cx) + math.cos(theta) * (pt1[1] - cy) + cy
-    point_1 = (rotated_x, rotated_y)
+    point_1 = (int(rotated_x), int(rotated_y))
 
     # Point 2
     rotated_x = math.cos(theta) * (pt2[0] - cx) + math.sin(theta) * (pt2[1] - cy) + cx
     rotated_y = -math.sin(theta) * (pt2[0] - cx) + math.cos(theta) * (pt2[1] - cy) + cy
-    point_2 = (rotated_x, rotated_y)
+    point_2 = (int(rotated_x), int(rotated_y))
 
     # Point 3
     rotated_x = math.cos(theta) * (pt3[0] - cx) + math.sin(theta) * (pt3[1] - cy) + cx
     rotated_y = -math.sin(theta) * (pt3[0] - cx) + math.cos(theta) * (pt3[1] - cy) + cy
-    point_3 = (rotated_x, rotated_y)
+    point_3 = (int(rotated_x), int(rotated_y))
 
     return point_0, point_1, point_2, point_3
 
@@ -204,9 +209,9 @@ class vision_drive:
     if angle<-180:
       angle = angle + 360
 
-
-    c_x = int(self.occupncy_grd.shape[1]/2)
-    c_y = int(self.occupncy_grd.shape[0]/2)
+    # [CSLAM] Origin of custom slam map .
+    c_x = int(self.c_slam_map.shape[1]/2)
+    c_y = int(self.c_slam_map.shape[0]/2)
 
     # a) Shifting Origin to Image center by subtracting
     # b) In Image to get identical effect y increases downwards so we inverse y so it increases now upwards
@@ -224,9 +229,11 @@ class vision_drive:
 
     x_off = -(+x - c_x)
     y_off = -(-y - c_y)
+    
+    # [CSLAM] Drone current location being shown on Map
+    cv2.circle(self.c_slam_map,(x_off,y_off),2,(255,255,255),-1)
 
-    cv2.circle(self.occupncy_grd,(x_off,y_off),2,(255,255,255),-1)
-
+    # [CSLAM] Drone Pose being overlayed using two different methods
     length = 20
     P1 = (x_off,y_off)
     P2 = ( 
@@ -235,56 +242,58 @@ class vision_drive:
           )
     P1_rotated = self.rotate_point(P1[0], P1[1], orientation, (P1[0]-50,P1[1]))
 
-    occupncy_grd = cv2.arrowedLine(self.occupncy_grd.copy(), P1, P2, (0,140,255), 3,tipLength=0.6)
-    occupncy_grd = cv2.arrowedLine(occupncy_grd, P1, P1_rotated, (0,0,255), 3,tipLength=0.3)
-    occupncy_grd = cv2.circle(occupncy_grd, (c_x,c_y), 2, (255,255,255),-1)
+    c_slam_map_draw = cv2.arrowedLine(self.c_slam_map.copy(), P1, P2, (0,140,255), 3,tipLength=0.6)
+    c_slam_map_draw = cv2.arrowedLine(c_slam_map_draw, P1, P1_rotated, (0,0,255), 3,tipLength=0.3)
+    
+    # [CSLAM] Map Origin ==> White circle.
+    c_slam_map_draw = cv2.circle(c_slam_map_draw, (c_x,c_y), 2, (255,255,255),-1)
 
+    # [CSLAM] Drone pose being overlayed on map in text 
     if putText:
       pose_txt = "[X,Y,Orient] = ["+str(x_off)+","+str(y_off)+","+str(orientation)+"]"
       pose_orig_txt = "[XOrig,YOrig,Orient] = ["+str(x)+","+str(y)+","+str(orientation)+"]"
-      #Shape_txt = "(Width(Cols),height(Rows)) = ["+str(self.img_w)+","+str(self.img_h)+"]"
-      occupncy_grd = cv2.putText(occupncy_grd,pose_txt, (50,50), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255),1)
-      occupncy_grd = cv2.putText(occupncy_grd,pose_orig_txt, (50,100), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255),1)
-      #occupncy_grd = cv2.putText(occupncy_grd,Shape_txt, (50,100), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255),1)
+
+      c_slam_map_draw = cv2.putText(c_slam_map_draw,pose_txt, (50,50), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255),1)
+      c_slam_map_draw = cv2.putText(c_slam_map_draw,pose_orig_txt, (50,100), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255),1)
       
 
+    # [CSLAM] Default and Pose Aligned FOV being displayed on CSLAM map (CounterClockwise pts)
     fov_strt     = (x_off-int(self.GSD_x_cm/2),y_off-int(self.GSD_y_cm/2))
-    fov_topright = (x_off+int(self.GSD_x_cm/2),y_off-int(self.GSD_y_cm/2))
     fov_btmleft  = (x_off-int(self.GSD_x_cm/2),y_off+int(self.GSD_y_cm/2))
     fov_end      = (x_off+int(self.GSD_x_cm/2),y_off+int(self.GSD_y_cm/2))
-
-    st_rot,toprgt_rot,btmlft_rot,end_rot = self.rotate_rectangle(orientation+90,P1[0], P1[1],fov_strt, fov_topright, fov_btmleft, fov_end)
-
-    occupncy_grd = cv2.putText(occupncy_grd,str(fov_strt), (fov_strt[0]-20,fov_strt[1]-20), cv2.FONT_HERSHEY_PLAIN, 1, (0,0,255),1)
-    occupncy_grd = cv2.putText(occupncy_grd,str(fov_btmleft), (fov_btmleft[0]-20,fov_btmleft[1]+20), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,0),1)
-    occupncy_grd = cv2.putText(occupncy_grd,str(fov_end), (fov_end[0]+20,fov_end[1]+20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0),1)
-    occupncy_grd = cv2.putText(occupncy_grd,str(fov_topright), (fov_topright[0]+20,fov_topright[1]-20), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255),1)
-  
-
+    fov_topright = (x_off+int(self.GSD_x_cm/2),y_off-int(self.GSD_y_cm/2))
+    
     # Default ROI (based on HFOV AND VFOV) (Not aligned with robot pose)
     pts = np.array([np.asarray(fov_strt),np.asarray(fov_btmleft),
                     np.asarray(fov_end),np.asarray(fov_topright)
                    ],np.int32)     
     pts = pts.reshape((-1, 1, 2))
-    cv2.polylines(occupncy_grd, [pts], True, (0,165,255),3)
+    cv2.polylines(c_slam_map_draw, [pts], True, (0,165,255),3)
+
     
+    st_rot, btmlft_rot, end_rot, toprgt_rot = self.rotate_rectangle(orientation+90,P1[0], P1[1],fov_strt,  fov_btmleft, fov_end, fov_topright)
+
+    c_slam_map_draw = cv2.putText(c_slam_map_draw,str(fov_strt), (fov_strt[0]-20,fov_strt[1]-20), cv2.FONT_HERSHEY_PLAIN, 1, (0,0,255),1)
+    c_slam_map_draw = cv2.putText(c_slam_map_draw,str(fov_btmleft), (fov_btmleft[0]-20,fov_btmleft[1]+20), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,0),1)
+    c_slam_map_draw = cv2.putText(c_slam_map_draw,str(fov_end), (fov_end[0]+20,fov_end[1]+20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0),1)
+    c_slam_map_draw = cv2.putText(c_slam_map_draw,str(fov_topright), (fov_topright[0]+20,fov_topright[1]-20), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255),1)
+
 
     # ROI representing the FOV of the drone in the simulation (Aligned with Robot Pose)
-    pts_rot = np.array([np.asarray(st_rot),np.asarray(btmlft_rot),
+    fov_pts = np.array([np.asarray(st_rot),np.asarray(btmlft_rot),
                     np.asarray(end_rot),np.asarray(toprgt_rot)
                    ],np.int32)     
-    pts_rot = pts_rot.reshape((-1, 1, 2))
-    cv2.polylines(occupncy_grd, [pts_rot], True, (0,255,0),3)
+    fov_pts = fov_pts.reshape((-1, 1, 2))
+    cv2.polylines(c_slam_map_draw, [fov_pts], True, (0,255,0),3)
 
-    # What didnot work! Directly rotating the points using origin caused many problems
-    #M = cv2.getRotationMatrix2D((int(occupncy_grd.shape[1]/2), int(occupncy_grd.shape[0]/2)),  orientation , 1.0)
-    #field_mask_rot = cv2.warpAffine(field_mask_rot, M, (hue.shape[1], hue.shape[0]))
-    #pts = cv2.warpAffine(pts, M, (pts.shape[1], pts.shape[0]))
-    #pts = cv2.transform(pts, M)
-    #cv2.polylines(occupncy_grd, [pts], True, (0,255,0),3)
+    fov_pts_str = "[FOV-PoseAligned] = [ "+str(st_rot)+" , "+str(btmlft_rot)+" , "+str(end_rot)+" , "+str(toprgt_rot)+" ] "
+    c_slam_map_draw = cv2.putText(c_slam_map_draw,fov_pts_str, (50,430), cv2.FONT_HERSHEY_PLAIN, 1, (0,0,255),1)
 
-    cv2.namedWindow("OccpancyGrid (Drone-Pose)",cv2.WINDOW_NORMAL)
-    cv2.imshow("OccpancyGrid (Drone-Pose)",occupncy_grd)
+    fov_pts_ordered = ordrpts(fov_pts,image_draw=c_slam_map_draw)
+
+    cv2.imshow("C-SLAM (map)",self.c_slam_map)
+
+    return c_slam_map_draw,pts,fov_pts
 
 
   def video_feed_cb(self,data,grbg):
@@ -302,7 +311,7 @@ class vision_drive:
       self.foclen_v_mm = self.foclen_h_mm / self.aspect_ratio
 
     # Get updated drone Pose and display to User
-    self.show_drone_on_map(frame,True)
+    c_slam_map_draw,fov_unrot_pts,fov_pts = self.show_drone_on_map(frame,True)
 
     if self.attained_required_elevation:
       if not self.attained_capture_elevation:
@@ -325,12 +334,11 @@ class vision_drive:
             #cv2.imwrite(img_name,img_cropped)
             print("start navigating")
             
-            self.navigator_.navigate(frame, frame_draw,self.vel_msg,self.vel_pub,self.sonar_curr,self.occupncy_grd,self.drone_pose)
+            self.navigator_.navigate(frame, frame_draw,self.vel_msg,self.vel_pub,self.sonar_curr,self.c_slam_map,c_slam_map_draw,fov_unrot_pts,fov_pts,self.drone_pose,self.GSD)
 
 
 
-    frame_draw = cv2.resize(frame_draw,None, fx=0.5,fy=0.5)
-    cv2.imshow("UAV_video_feed",frame_draw)
+    imshow("UAV_video_feed",frame_draw)
     
     k = cv2.waitKey(1)
     if k==27:

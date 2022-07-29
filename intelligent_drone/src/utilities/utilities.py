@@ -2,6 +2,125 @@
 import cv2
 import numpy as np
 import math
+from math import sin,cos,pi,degrees,radians
+
+def ordrpts(pts,order="Counter-clockwise",image_draw=[]):
+
+    # the top-left point will have the smallest sum, whereas
+    # the bottom-right point will have the largest sum
+    s = np.sum(pts,axis = 2)
+    toplft = pts[np.argmin(s)][0]
+    btmrgt = pts[np.argmax(s)][0]
+    # now, compute the difference between the points, the
+    # top-right point will have the smallest difference,
+    # whereas the bottom-left will have the largest difference
+    diff = np.diff(pts, axis = 2)
+    toprgt = pts[np.argmin(diff)][0]
+    btmlft = pts[np.argmax(diff)][0]
+
+    if image_draw!=[]:
+        cv2.putText(image_draw,str(toplft), (toplft[0]-40,toplft[1]-20), cv2.FONT_HERSHEY_PLAIN, 1, (0,0,255),1)
+        cv2.putText(image_draw,str(btmlft), (btmlft[0]-40,btmlft[1]+20), cv2.FONT_HERSHEY_PLAIN, 1, (0,255,0),1)
+        cv2.putText(image_draw,str(btmrgt), (btmrgt[0]+40,btmrgt[1]+20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0),1)
+        cv2.putText(image_draw,str(toprgt), (toprgt[0]+40,toprgt[1]-20), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255),1)
+
+    if order == "Counter-clockwise":
+         return([toplft,btmlft,btmrgt,toprgt])
+    else:
+         return([toplft,toprgt,btmrgt,btmlft])
+      
+
+def nothing():
+    pass
+
+def imshow_stage(image_list,function = "",debug=False):
+    if function!="":
+        function = "[ "+function+" ] "
+    img_name = function
+    cv2.namedWindow(img_name,cv2.WINDOW_NORMAL)
+    trackbar_name = "Stage"
+    cv2.createTrackbar(trackbar_name, img_name,0,len(image_list)-1,nothing)
+
+    if debug == True:
+        while(1):
+            Current_Stage = cv2.getTrackbarPos(trackbar_name,img_name)
+            imshow(img_name, image_list[Current_Stage])
+            k = cv2.waitKey(1)
+            if k==27:
+                break
+    else:
+        Current_Stage = cv2.getTrackbarPos(trackbar_name,img_name)
+        imshow(img_name, image_list[Current_Stage])       
+
+
+def imshow_stages(image_list,function = ""):
+    
+    if function!="":
+        function = "[ "+function+" ] "    
+
+    for idx,image in enumerate(image_list):
+        img_name = function + "Stage_" + str(idx)
+        imshow(img_name, image)
+
+def imshow(img_name,img):
+    # Function to display complete image on the screen
+    img_disp = img.copy()
+    cv2.namedWindow(img_name,cv2.WINDOW_NORMAL)
+    # If size is greater then hd resolution (most monitors) resize image
+    if img_disp.shape[1]>=720:
+        img_disp = cv2.resize(img_disp, None,fx=0.5,fy=0.5)
+    cv2.imshow(img_name,img_disp)    
+
+
+# [NEW]: Find closest point in a list of point to a specific position
+def closest_node(node, nodes,max_sanedist=None):
+    nodes = np.asarray(nodes)
+    if type(node)!='numpy.ndarray':
+        node = np.asarray(node)
+    dist_2 = np.sum((nodes - node)**2, axis=(nodes.ndim-1))
+    if max_sanedist!= None:
+        # if max allowed dist is provided then if the closest node is farther from max_sanedist we return -1
+        if min(dist_2)>max_sanedist:
+            return -1
+    return np.argmin(dist_2)
+
+def rotate_point(cx, cy, angle, p_tuple):
+        
+    #  * [Clockwise Rotation happens in Image as Y increases downwards]
+    #  * .------------------------------------.
+    #  * |            * -------.          img |
+    #  * |    rotated_pt    -90 \             |
+    #  * |                       \            |
+    #  * |                        \           |
+    #  * |            * ---------> *          |
+    #  * |         ref_pt     given_pt        |
+    #  * |                       /            |
+    #  * |                      /             |
+    #  * |    rotated_pt   +90 /              |
+    #  * |            * ------'               |
+    #  * '------------------------------------'
+
+    p = list(p_tuple)
+    
+    s = sin(radians(angle))
+    c = cos(radians(angle))
+    
+    # translate point back to origin:
+    p[0] -= cx
+    p[1] -= cy
+
+    #rotate point
+    # (Interestingly) the plot is modified from what the internet provided
+    # AS we want to represent simulation (cartesian) angles in the image we will do (counterclockwise) rotation for +
+    xnew = p[0] * c + p[1] * s
+    ynew = - p[0] * s + p[1] * c
+
+    # translate point back:
+    p[0] = xnew + cx
+    p[1] = ynew + cy
+    
+    return (int(p[0]),int(p[1]))
+  
 
 def moving_average(numbers,window_size=3):
 
@@ -72,7 +191,7 @@ def estimate_pt(pta,ptb,case ="start"):
         return (x2*2-x1,y2*2-y1)
 
 
-def imfill(im_th,display_intermediates = False):
+def imfill(im_th,display_intermediates = False,fill_loc = (0,0)):
     #th, im_th = cv2.threshold(gray, 220, 255, cv2.THRESH_BINARY_INV);
     # Copy the thresholded image.
     im_floodfill = im_th.copy()
@@ -83,7 +202,7 @@ def imfill(im_th,display_intermediates = False):
     mask = np.zeros((h+2, w+2), np.uint8)
 
     # Floodfill from point (0, 0)
-    cv2.floodFill(im_floodfill, mask, (0,0), 255)
+    cv2.floodFill(im_floodfill, mask, fill_loc, 255)
 
     # Invert floodfilled image
     im_floodfill_inv = cv2.bitwise_not(im_floodfill)

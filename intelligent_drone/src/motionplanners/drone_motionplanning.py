@@ -160,7 +160,21 @@ class drone_motionplanner():
         #      (OLD)        =>      (NEW) 
         #   [-180,180]             [0,360]
 
+    def move_to_next_row(self,bot_loc,angle_to_turn,velocity,velocity_publisher):
+        
+        # Setting steering angle of bot proportional to the amount of turn it is required to take
+        angle = interp(angle_to_turn,[-360,360],[-1,1])
 
+        velocity.angular.z = angle
+        #print("angle = ",angle)
+        # Move forward when aligned to the destination
+        if abs(angle) < 0.01:
+            velocity.linear.x = 0.1
+        else:
+            velocity.linear.x = 0.0
+        velocity_publisher.publish(velocity)
+
+    
     def go_to_goal(self,bot_loc,path,max_dist,velocity,velocity_publisher):
 
         # Finding the distance and angle between (current) bot location and the (current) mini-goal
@@ -217,6 +231,7 @@ class drone_motionplanner():
 
                     # Set goal_not_reached_flag to False
                     self.goal_not_reached_flag = False
+
                     
                     # Play the party song, Mention that reached goal
                     pygame.mixer.music.load(os.path.abspath('intelligent_drone/resource/Goal_reached.wav'))
@@ -241,13 +256,24 @@ class drone_motionplanner():
         if ((type(path)!=int) and path!=[]):
             # Trying to reach first mini-goal
             #if (self.path_iter==0):
+            print("self.path_iter = ",self.path_iter)
             self.goal_pose_x = path[self.path_iter][0]
             self.goal_pose_y = path[self.path_iter][1]
 
             # Traversing through found path to reach goal
             self.go_to_goal(bot_loc,path,max_dist,velocity,velocity_publisher)
         elif ((path==[]) and (state=="Navigating_row")):
+            print("Current State at motionplanner = {}".format(state))
             velocity.linear.x = 0.10
+            velocity_publisher.publish(velocity)
+
+        elif ((path==[]) and (state=="changing_row")):
+            print("Current State at motionplanner = {}".format(state))
+            #velocity.linear.x = 0.0
+            velocity_publisher.publish(velocity)
+        else:
+            print("Current State at motionplanner = {}".format(state))
+            velocity.linear.x = 0.0
             velocity_publisher.publish(velocity)
 
 

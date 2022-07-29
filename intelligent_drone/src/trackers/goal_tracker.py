@@ -9,7 +9,9 @@ class Tracker:
 
         print("Initialized Object of Goal class")
         # Create MultiTracker object
+        #self.M_Tracker = cv2.MultiTracker()
         self.multiTracker = cv2.MultiTracker_create()
+        #self.multiTracker = self.M_Tracker.create()        
         self.mode = "Detection"
         self.Tracked_class = "Unknown"
         self.tracked_bboxes = []
@@ -55,6 +57,10 @@ class Tracker:
 
         # 3. If SignTrack is in Detection Proceed to intialize tracker
         elif (self.mode == "Detection"):
+
+            if (len(self.multiTracker.getObjects())!= 0):
+                del self.multiTracker
+                self.multiTracker = cv2.MultiTracker_create()
             
             for i in range(len(bboxes)):
                 self.colors.append((randint(0, 255), randint(0, 255), randint(0, 255)))
@@ -65,6 +71,8 @@ class Tracker:
                     print("bbox = ", bbox)
                     tracker = cv2.TrackerKCF_create()
                     self.multiTracker.add(tracker, frame, bbox)
+                    #self.multiTracker.
+                    self.tracked_bboxes = [] # Resetting tracked bboxes
                     self.mode = "Tracking" # Set mode to tracking
                     self.Tracked_class = "Plant" # keep tracking frame sign name
 
