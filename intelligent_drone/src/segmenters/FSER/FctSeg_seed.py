@@ -107,7 +107,7 @@ def Fseg(Ig, ws, seeds):
 if __name__ == '__main__':
     time0 = time.time()
     # an example of using Fseg
-    img = io.imread('M1.pgm')
+    img = io.imread('intelligent_drone/src/segmenters/FSER/M1.pgm')
 
     # define filter bank and apply to image. for color images, convert rgb to grey scale and then apply filter bank
     filter_list = [('log', .5, [3, 3]), ('log', 1.2, [7, 7])]
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     # run segmentation. try different window size
     seg_out = Fseg(Ig, ws=19, seeds=seeds)
 
-    print 'FSEG runs in %0.2f seconds. ' % (time.time() - time0)
+    print('FSEG runs in %0.2f seconds. ' % (time.time() - time0))
 
     # show results
     fig, ax = plt.subplots(ncols=2, sharex=True, sharey=True, figsize=(10, 5))

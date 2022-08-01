@@ -6,6 +6,12 @@ import matplotlib.pyplot as plt
 
 from sklearn.cluster import KMeans
 from sklearn import preprocessing
+import cProfile
+
+import time
+#start = time.time()
+#end = time.time()
+#print("end - start = {}.sec".format(end - start))
 
 # Building some gabor kernels to filter image
 orientations = [0.0, np.pi / 2, np.pi, 3 * np.pi / 2]
@@ -21,94 +27,111 @@ def build_gabor_kernels():
 
     return filters
 
-image = cv.imread('drone_view.png')
-r = cv.selectROI("SelectROI",image)
-# Crop image
-image = image[int(r[1]):int(r[1]+r[3]), int(r[0]):int(r[0]+r[2])]
+def main():
+    image = cv.imread('/home/haiderabbasi/Development/r1_workspace/src/ROS2-Drones-with-AI-and-Computer-Vision/drone_view.png')
+    #r = cv.selectROI("SelectROI",image)
+    r =  [763, 160, 253, 238]
 
-hls = cv.cvtColor(image, cv.COLOR_BGR2HLS)
-hue = hls[:,:,0]
-plt.imshow(hue)
+    # Crop image
+    image = image[int(r[1]):int(r[1]+r[3]), int(r[0]):int(r[0]+r[2])]
 
-image = cv.cvtColor(hue, cv.COLOR_GRAY2BGR)
+    hls = cv.cvtColor(image, cv.COLOR_BGR2HLS)
+    hue = hls[:,:,0]
+    #plt.imshow(hue)
 
-#image = cv.imread('kuta.png')
-rows, cols, channels = image.shape
+    image = cv.cvtColor(hue, cv.COLOR_GRAY2BGR)
 
-# Resizing the image. 
-# Full image is taking to much time to process
-image = cv.resize(image, (int(cols * 0.5), int(rows * 0.5)))
-rows, cols, channels = image.shape
+    #image = cv.imread('kuta.png')
+    rows, cols, channels = image.shape
 
-gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    # Resizing the image. 
+    # Full image is taking to much time to process
+    image = cv.resize(image, (int(cols * 0.5), int(rows * 0.5)))
+    rows, cols, channels = image.shape
 
-gaborKernels = build_gabor_kernels()
+    gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
 
-gaborFilters = []
+    gaborKernels = build_gabor_kernels()
 
-for (i, kernel) in enumerate(gaborKernels):
-    filteredImage = cv.filter2D(gray, cv.CV_8UC1, kernel)
+    gaborFilters = []
 
-    # Blurring the image
-    sigma = int(3*0.5*wavelengths[i % len(wavelengths)])
+    for (i, kernel) in enumerate(gaborKernels):
+        filteredImage = cv.filter2D(gray, cv.CV_8UC1, kernel)
 
-    # Sigma needs to be odd
-    if sigma % 2 == 0:
-        sigma = sigma + 1
+        # Blurring the image
+        sigma = int(3*0.5*wavelengths[i % len(wavelengths)])
 
-    blurredImage = cv.GaussianBlur(filteredImage,(int(sigma),int(sigma)),0)
-    gaborFilters.append(blurredImage)
+        # Sigma needs to be odd
+        if sigma % 2 == 0:
+            sigma = sigma + 1
+
+        blurredImage = cv.GaussianBlur(filteredImage,(int(sigma),int(sigma)),0)
+        gaborFilters.append(blurredImage)
+
+    # numberOfFeatures = 1 (gray color) + number of gabor filters + 2 (x and y)
+    numberOfFeatures = 1  + len(gaborKernels) + 2
 
 
-# numberOfFeatures = 1 (gray color) + number of gabor filters + 2 (x and y)
-numberOfFeatures = 1  + len(gaborKernels) + 2
+    # Empty array that will contain all feature vectors
+    featureVectors = []
 
-# Empty array that will contain all feature vectors
-featureVectors = []
+    for i in range(0, rows, 1):
+        for j in range(0, cols, 1):
+            vector = [gray[i][j]]
 
-for i in range(0, rows, 1):
-    for j in range(0, cols, 1):
-        vector = [gray[i][j]]
+            for k in range(0, len(gaborKernels)):
+                vector.append(gaborFilters[k][i][j])
 
-        for k in range(0, len(gaborKernels)):
-            vector.append(gaborFilters[k][i][j])
+            vector.extend([i+1, j+1])
 
-        vector.extend([i+1, j+1])
+            featureVectors.append(vector)
 
-        featureVectors.append(vector)
 
-# Some example results:
-# featureVectors[0] = [164, 3, 10, 255, 249, 253, 249, 2, 43, 255, 249, 253, 249, 3, 10, 255, 249, 253, 249, 2, 43, 255, 249, 253, 249, 1, 1]
-# featureVectors[1] = [163, 3, 17, 255, 249, 253, 249, 2, 43, 255, 249, 253, 249, 3, 17, 255, 249, 253, 249, 2, 43, 255, 249, 253, 249, 1, 2]
+    # Some example results:
+    # featureVectors[0] = [164, 3, 10, 255, 249, 253, 249, 2, 43, 255, 249, 253, 249, 3, 10, 255, 249, 253, 249, 2, 43, 255, 249, 253, 249, 1, 1]
+    # featureVectors[1] = [163, 3, 17, 255, 249, 253, 249, 2, 43, 255, 249, 253, 249, 3, 17, 255, 249, 253, 249, 2, 43, 255, 249, 253, 249, 1, 2]
 
-# Normalizing the feature vectors
-scaler = preprocessing.StandardScaler()
+    # Normalizing the feature vectors
+    scaler = preprocessing.StandardScaler()
 
-scaler.fit(featureVectors)
-featureVectors = scaler.transform(featureVectors)
 
-kmeans = KMeans(n_clusters=2, random_state=170)
-kmeans.fit(featureVectors)
+    scaler.fit(featureVectors)
+    featureVectors = scaler.transform(featureVectors)
 
-centers = kmeans.cluster_centers_
-labels = kmeans.labels_
+    kmeans = KMeans(n_clusters=2, random_state=170)
+    kmeans.fit(featureVectors)
 
-result = centers[labels]
 
-# Only keep first 3 columns to make it easy to plot as an RGB image
-result = np.delete(result, range(3, numberOfFeatures), 1)
 
-#outt = (result.reshape(rows, cols, 3)) * 100
-outt = (result.reshape(rows, cols, 3)) 
+    centers = kmeans.cluster_centers_
+    labels = kmeans.labels_
 
-outt = cv.normalize(outt, None, alpha = 0, beta = 255, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F)
+    result = centers[labels]
 
-outt = outt.astype(np.uint8)
+    # Only keep first 3 columns to make it easy to plot as an RGB image
+    result = np.delete(result, range(3, numberOfFeatures), 1)
 
-print("min(outt) ",outt.min())
-print("max(outt) ",outt.max())
-print("outt.dtype ",outt.dtype)
-plt.figure(figsize = (15,8))
-#plt.imsave('test.jpg',outt)
-plt.imshow(outt)
-plt.show()
+    #outt = (result.reshape(rows, cols, 3)) * 100
+    outt = (result.reshape(rows, cols, 3)) 
+
+    outt = cv.normalize(outt, None, alpha = 0, beta = 255, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F)
+
+    outt = outt.astype(np.uint8)
+
+
+    print("min(outt) ",outt.min())
+    print("max(outt) ",outt.max())
+    print("outt.dtype ",outt.dtype)
+    #plt.figure(figsize = (15,8))
+    #plt.imsave('test.jpg',outt)
+    #plt.imshow(outt)
+    #plt.show()
+
+
+
+if __name__ == "__main__":
+    cProfile.run('main()',sort='cumtime')
+    #start = time.time()
+    #main()
+    #end = time.time()
+    #print("end - start = {}.sec".format(end - start))

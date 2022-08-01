@@ -256,7 +256,6 @@ class drone_motionplanner():
         if ((type(path)!=int) and path!=[]):
             # Trying to reach first mini-goal
             #if (self.path_iter==0):
-            print("self.path_iter = ",self.path_iter)
             self.goal_pose_x = path[self.path_iter][0]
             self.goal_pose_y = path[self.path_iter][1]
 

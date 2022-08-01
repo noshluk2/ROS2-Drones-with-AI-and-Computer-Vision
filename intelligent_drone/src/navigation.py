@@ -9,7 +9,7 @@ from utilities.utilities import dist_pt_line,ret_centroid,imfill,estimate_pt,clo
 from trackers.goal_tracker import Tracker
 from motionplanners.drone_motionplanning import drone_motionplanner
 
-from math import atan,degrees
+from math import atan,degrees,tan,radians
 
 from collections import deque
 class navigator():
@@ -21,9 +21,15 @@ class navigator():
 
         self.prev_elevation = 0
 
+        # Current visited plant location
         self.plant_tagged = (0,0)
+        # Used to estimate the next plant in the same row
         self.plants_tagged = deque(maxlen=2)
+        # Container to store locations of all plants in a row
         self.plants_in_a_row = []
+        # Container to store location of all plants in the field
+        self.plants_in_the_field = []
+
         self.curr_goal = (0,0)
 
         self.drone_strt_loc_map = (0,0)
@@ -184,7 +190,7 @@ class navigator():
 
         return bboxes
 
-    def identify_row_strt(self,drone_view,mask,lst_plantloc,corrected_slope):
+    def identify_row_strt(self,drone_view,mask,lst_plantloc_calc,corrected_slope):
         # Converting to hls color space to make light invariant
         hls = cv2.cvtColor(drone_view, cv2.COLOR_BGR2HLS)
         hue = hls[:,:,0]
@@ -231,25 +237,30 @@ class navigator():
 
         prob_cnts_unvisited = cv2.findContours(field_mask_rot_Unvisited, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0]
         prob_centroids_Unvisited,hue_edges_centroids_Unvisited = ret_centroid(field_mask_rot_Unvisited,prob_cnts_unvisited)
+        
+        # Checking correctioness in localization of Last plant of the previous row
+        lst_plantloc_onimg_idx = closest_node(lst_plantloc_calc, prob_centroids)
+        lst_plantloc_actual = prob_centroids[lst_plantloc_onimg_idx]
 
-        lst_plantloc_onimg_idx = closest_node(lst_plantloc, prob_centroids)
-        lst_plantloc_onimg = prob_centroids[lst_plantloc_onimg_idx]
-
-        closest_plant_idx_Unvisited = closest_node(lst_plantloc, prob_centroids_Unvisited)
+        # Assuming [ Unvisited Area would include plant_rows where the drone has not been +
+        #            Plants are mostly aligned, Closest node would represent the adjacent plant in
+        #            the next row to the last plant of the current row.But because of inconsistency in mask
+        #                                                             we will use location identified to get 
+        #                                                             its precise location using the centroids
+        #                                                             extracted from the original drone_view (no_mask applied)
+        closest_plant_idx_Unvisited = closest_node(lst_plantloc_calc, prob_centroids_Unvisited)
         closest_plant_idx = closest_node(prob_centroids_Unvisited[closest_plant_idx_Unvisited], prob_centroids)
-        print("closest_plant_idx = ",closest_plant_idx)
         closest_plant_centroid = prob_centroids[closest_plant_idx]
-        print("closest_found_plant_centroid = ",closest_plant_centroid)
         
-        drone_view_draw = drone_view.copy()
-        cv2.drawContours(drone_view_draw, prob_cnts, closest_plant_idx, (0,128,0),-1)
-        cv2.circle(drone_view_draw, closest_plant_centroid, 4, (0,0,255),4)
-        
-        cv2.circle(drone_view_draw, lst_plantloc_onimg, 4, (0,255,0),4)
-        cv2.circle(drone_view_draw, lst_plantloc, 4, (0,128,255),4)
+        # Identifying the plant to visit next (Would be the first plant in the adjacent unvisited row)
+        drone_view_nxtrow_plant = drone_view.copy()
+        cv2.drawContours(drone_view_nxtrow_plant, prob_cnts, closest_plant_idx, (0,128,0),-1)
+        cv2.circle(drone_view_nxtrow_plant, closest_plant_centroid, 4, (0,0,255),4) 
+        cv2.circle(drone_view_nxtrow_plant, lst_plantloc_actual, 4, (0,255,0),4) 
+        cv2.circle(drone_view_nxtrow_plant, lst_plantloc_calc, 4, (0,128,255),4) # last plant in the current row loc (More precise)
 
-        lstplant_offset = (lst_plantloc[0] - lst_plantloc_onimg[0],lst_plantloc[1] - lst_plantloc_onimg[1])
-        lstplant_absoffset = (abs(lst_plantloc[0] - lst_plantloc_onimg[0]),abs(lst_plantloc[1] - lst_plantloc_onimg[1]))
+        lstplant_offset = (lst_plantloc_calc[0] - lst_plantloc_actual[0],lst_plantloc_calc[1] - lst_plantloc_actual[1])
+        lstplant_absoffset = (abs(lst_plantloc_calc[0] - lst_plantloc_actual[0]),abs(lst_plantloc_calc[1] - lst_plantloc_actual[1]))
         lstplant_maxoffset = max(lstplant_absoffset[0],lstplant_absoffset[1])
         self.cam_offset_img = lstplant_offset[lstplant_absoffset.index(lstplant_maxoffset)]
         print("self.cam_offset_img = ",self.cam_offset_img)
@@ -257,8 +268,8 @@ class navigator():
         # [TESTING]: Line perpendicular to row slope is being calculated based on formula = (-1/plantrow_slope) [Recent change: Corrected from + to - of inverse of slope]
         # Target : Was looking to find the area to look for next rows based on [Last Plant On Img , plant_row_slope_perp, found_closestPlant]
         print("# Target : Was looking to find the area to look for next rows based on [Last Plant On Img , plant_row_slope_perp, found_closestPlant]")
-        rows_offset    = (    closest_plant_centroid[0] - lst_plantloc_onimg[0] ,    closest_plant_centroid[1] - lst_plantloc_onimg[1] )
-        rows_absoffset = (abs(closest_plant_centroid[0] - lst_plantloc_onimg[0]),abs(closest_plant_centroid[1] - lst_plantloc_onimg[1]))
+        rows_offset    = (    closest_plant_centroid[0] - lst_plantloc_actual[0] ,    closest_plant_centroid[1] - lst_plantloc_actual[1] )
+        rows_absoffset = (abs(closest_plant_centroid[0] - lst_plantloc_actual[0]),abs(closest_plant_centroid[1] - lst_plantloc_actual[1]))
         rows_absmaxoffset = max(rows_absoffset[0],rows_absoffset[1])
         
         # idx   [0 or 1] ==> [col or row] 
@@ -269,12 +280,13 @@ class navigator():
         # y = mx + b
         r,c = drone_view.shape[0:2]
     
-        pt_a = lst_plantloc_onimg
+        pt_a = lst_plantloc_actual
         row_slope_perp = -(1 / self.curr_row_slope)
         # b              =  y(row) - (      m       * x(col))
         yiCntercept_perp = pt_a[1] - (row_slope_perp*pt_a[0])
 
         print("row_slope_perp = ",row_slope_perp)
+        
         if (abs(row_slope_perp)<1):
             # Horizontal line ===> Look in x diorection for next point
             if rows_maxoffset_value>=0:
@@ -283,7 +295,6 @@ class navigator():
                 x = 0
             y = int ( (row_slope_perp * x) + yiCntercept_perp )
             print("row_slope_perp is less then 1 ==> Horizontal Line")
-
         else:
             # vertical line ===> Look in y direction for next point
             if rows_maxoffset_value>=0:
@@ -293,12 +304,14 @@ class navigator():
             x = int ( (y - yiCntercept_perp) / row_slope_perp ) 
             print("row_slope_perp is greater then 1 ==> Vertical Line")
 
-
         pt_b = (x,y)
         print("pt_b = ",pt_b)
         print("Computed in conditions = [rows_maxoffset_value] = {}".format(rows_maxoffset_value))
-        cv2.line(drone_view_draw, pt_a, pt_b, (0,50,0),int(self.avg_plant_width*2))
+        cv2.line(drone_view_nxtrow_plant, pt_a, pt_b, (0,50,0),int(self.avg_plant_width*2))
         
+
+        # [Double Check]: Based on the estimated row direction, 
+        #                             we double checked area of the field that is unvisited...
         estimated_nxt_rows_mask = np.zeros_like(mask)
         cv2.line(estimated_nxt_rows_mask, pt_a, pt_b, 255,int(self.avg_plant_width*2))
         mask = cv2.bitwise_and(mask, estimated_nxt_rows_mask)
@@ -312,7 +325,7 @@ class navigator():
 
         
         image_list = [drone_view,hue_edges,hue_edges_closed,field_mask_rot,field_mask_rot_Unvisited,
-                      hue_edges_centroids,hue_edges_centroids_Unvisited,drone_view_draw,estimated_nxt_rows_mask]
+                      hue_edges_centroids,hue_edges_centroids_Unvisited,drone_view_nxtrow_plant,estimated_nxt_rows_mask]
         imshow_stage(image_list,"identify_row_strt",corrected_slope)
 
         return p_bbox
@@ -341,22 +354,17 @@ class navigator():
         return True
 
     # Function to find what each detected corner represented in the initial fov points
-    def find_closest_on_fov(self,corners,fov_cnts):
+    def find_closest_on_fov(self,corners_unvisited,fov_cnts):
         
         closest_pts_on_fov = []
-        closest_pts_indices = [0] * len(corners)
-        for i,corner in enumerate(corners):
-            #corner_list = (corner.tolist())[0]
-            #corner_tuple = (corner_list[0],corner_list[1])
-            #print("corner_tuple = ",corner_tuple)
+        closest_pts_indices = [0] * len(corners_unvisited)
+        for i,corner in enumerate(corners_unvisited):
             # Estimating start as the closest road to car
             closest_idx = closest_node(corner,fov_cnts[0],5)
-            print("closest_idx= ",closest_idx)
-            #closest_corner = (corners[closest_idx].tolist())[0]
+            #closest_corner = (corners_unvisited[closest_idx].tolist())[0]
 
             closest_pts_indices[i] = closest_idx
             if closest_idx!=-1:
-                print("closest_corner= ",fov_cnts[0][closest_idx])
                 closest_pts_on_fov.append((fov_cnts[0][closest_idx][0][0],fov_cnts[0][closest_idx][0][1]))
 
         print("closest_pts_on_fov = ",closest_pts_on_fov)
@@ -376,7 +384,6 @@ class navigator():
             yiCntercept = parameters[1]
             
             corrected_slope = False
-            print("residuals (Error) = ",residuals)
             if residuals>1000:
                 print("residuals (Error) is toooo high !!!!= ",residuals)
                 print("(Initial) slope",slope)
@@ -388,6 +395,12 @@ class navigator():
                     print("residuals (Error) is less in the inverse case!!!!= ",residuals)
                     # Slope will now be the negative of inverse of the perpendicular slope as x and y were swapped
                     slope = -(1/parameters[0])
+                    # Interestingly , if a abs(slope)>50 means angle >88deg we have a vertical line. Meaning
+                    #                                 Meaning: Equation of line is x = a (Here a can be taken from any point column)
+                    if abs(slope)>50:
+                        # Vertical line found
+                        # Reference (Slope-intercpt form of a vertical line): https://www.quora.com/How-do-you-write-a-vertical-line-in-slope-intercept-form
+                        print("Vertical Line found ! .... Basicaly y intercept is not important anymore")
                     # b         = y    -      m*x
                     yiCntercept = y[0] - (slope*x[0])
                     print("#### (Corrected) Slope!",slope)
@@ -395,20 +408,17 @@ class navigator():
                     corrected_slope = True
 
 
-            X = np.reshape(x, (x.shape[0],1))
-            Y = np.reshape(y, (y.shape[0],1))
-            X = np.append(X, np.ones((X.shape[0], 1)), axis=1)
-            # Calculating the parameters using the least square method
-            theta = np.linalg.inv(X.T.dot(X)).dot(X.T).dot(Y)
-
-            print(f'The parameters of the line: {theta}')
             print("slope",slope)
             print("yiCntercept",yiCntercept)
             
-            self.curr_row_slope = slope
-            self.curr_row_yintercept = yiCntercept
+            self.curr_row_slope         = slope
+            # Value of drone orientation can be directly be passed to member variable of same name 
+            #     as orientation is of type float which is an "immutable" object meaning modifying ones value would
+            #     cause creation of a new reference of that new value without modifying the other pointers pointing to old reference
+            self.curr_drone_orientation = orientation
+            self.curr_row_yintercept    = yiCntercept
 
-            h,w=c_slam_map_draw.shape[:2]
+            h,w = c_slam_map_draw.shape[:2]
             if slope!='NA':
                 ### here we are essentially extending the line to x=0 and x=width
                 ### and calculating the y associated with it
@@ -420,6 +430,14 @@ class navigator():
                     ##ending point
                     qx=w
                     qy = (slope*qx)+yiCntercept
+                elif abs(slope)>50:
+                    # We have a vertical line [So it spans from top of image to bottom]
+                    #                         [On same column as all other points.....]
+                    px = x[0] # Same column as point_a
+                    py = 0    # Starting from Image top (0 height)
+                    qx = x[0] # Same column as point_a
+                    qy = h    # Ending at Image bottom (full height)
+
                 else:
                     # x = (y-b)/slope
                     py = 0
@@ -455,43 +473,23 @@ class navigator():
 
             cnts = cv2.findContours(drone_fov_unvisited, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0]
 
-            drone_fov_unvisited_bgr_sumdiff = cv2.cvtColor(drone_fov_unvisited, cv2.COLOR_GRAY2BGR)
-            # the top-left point will have the smallest sum, whereas
-            # the bottom-right point will have the largest sum
-            s = np.sum(cnts[0],axis = 2)
-            toplft = cnts[0][np.argmin(s)]
-            btmrgt = cnts[0][np.argmax(s)]
-            # now, compute the difference between the points, the
-            # top-right point will have the smallest difference,
-            # whereas the bottom-left will have the largest difference
-            diff = np.diff(cnts[0], axis = 2)
-            toprgt = cnts[0][np.argmin(diff)]
-            btmlft = cnts[0][np.argmax(diff)]
-
-            cv2.circle(drone_fov_unvisited_bgr_sumdiff, (toplft[0][0],toplft[0][1]), 8, (0, 0, 255), -1)
-            cv2.circle(drone_fov_unvisited_bgr_sumdiff, (btmrgt[0][0],btmrgt[0][1]), 8, (0, 255, 0), -1)
-            cv2.circle(drone_fov_unvisited_bgr_sumdiff, (toprgt[0][0],toprgt[0][1]), 8, (255, 0, 0), -1)
-            cv2.circle(drone_fov_unvisited_bgr_sumdiff, (btmlft[0][0],btmlft[0][1]), 8, (255, 255, 0), -1)
-            cv2.imshow("drone_fov (Unvisited) (Sum-Diff)!",drone_fov_unvisited_bgr_sumdiff)
-
-            drone_fov_unvisited_approxcorners = cv2.cvtColor(drone_fov_unvisited, cv2.COLOR_GRAY2BGR)
             peri = cv2.arcLength(cnts[0], True)
-            corners = cv2.approxPolyDP(cnts[0], 0.04 * peri, True)
-            cv2.drawContours(drone_fov_unvisited_approxcorners,[corners],0,(255,0,0),3)
-            print("corners (ApproxPoly) = ",corners)
-            cv2.circle(drone_fov_unvisited_approxcorners, (corners[0][0][0],corners[0][0][1]), 8, (0, 0, 255), -1)
-            cv2.circle(drone_fov_unvisited_approxcorners, (corners[1][0][0],corners[1][0][1]), 8, (0, 255, 0), -1)
-            cv2.circle(drone_fov_unvisited_approxcorners, (corners[2][0][0],corners[2][0][1]), 8, (255, 0, 0), -1)
-            cv2.circle(drone_fov_unvisited_approxcorners, (corners[3][0][0],corners[3][0][1]), 8, (255, 255, 0), -1)
-            cv2.imshow("drone_fov (Unvisited) (approxPoly)!",drone_fov_unvisited_approxcorners)
+            corners_unvisited = cv2.approxPolyDP(cnts[0], 0.04 * peri, True)
+            print("corners_unvisited (ApproxPoly) = ",corners_unvisited)
+
 
             #[Clockwise closest pts]
             drone_fov_unvisited_pts_fov = cv2.cvtColor(drone_fov, cv2.COLOR_GRAY2BGR)
-            closest_pts_on_fov = self.find_closest_on_fov(corners,fov_cnts)[0]
+            #closest_pts_on_fov = self.find_closest_on_fov(corners_unvisited,fov_cnts)[0]
             
             # Finding the two corners that actually were part of initial fov of order
+            # Idea: Drone would have followed a particular trajectory, we estimated that and masked out areas 
+            #       that were already visited, this means the corners that we have are not the corners approx
+            #       from the complete drone fov. but from drone fov (Unvisited) so likely half present. Meaning
+            #       we would have one side with 2 corners of the original fov but the other are new corners made.
             #          [0,1,2,3]       =  [Top,b-left,end,top-right]
-            closest_pts_on_fovcorners,closest_pts_indices = self.find_closest_on_fov(corners,[fov_pts])
+            # Correct Output: Two Unvisited corners matched
+            closest_pts_on_fov,closest_pts_indices = self.find_closest_on_fov(corners_unvisited,[fov_pts])
             
             for pt in closest_pts_on_fov:
                 cv2.circle(drone_fov_unvisited_pts_fov, (pt[0],pt[1]), 8, (255, 255, 0), -1)
@@ -502,14 +500,11 @@ class navigator():
             cv2.imshow("drone_fov (Unvisited) pts_unrot_fov!",drone_fov_unvisited_pts_unrot_fov)
             print("closest_pts_indices = ",closest_pts_indices)
 
-            # Creating a list representing corners(tuple) of the drone view in clockwise order [Top,b-left,end,top-right]
+            # list representing corners_unvisited(tuple) of the drone view in clockwise order [Top,b-left,end,top-right]
             drone_view_corner_list = [(0,0),(0,drone_view.shape[0]),(drone_view.shape[1],drone_view.shape[0]),(drone_view.shape[1],0)]
 
-            #items = [1,2,3,4]
-            #Z = [3,4,5,6]
-            corner_indices = [0,1,2,3]
-            #notinlist = list(set(items)-set(Z))
-            
+
+            corner_indices = [0,1,2,3]            
             notinlist = list(set(corner_indices)-set(closest_pts_indices)) 
             print("notinlist = ",notinlist)
 
@@ -517,7 +512,7 @@ class navigator():
 
             corner_unrot_unknown = []
             for idx in notinlist:
-                corner = corners[idx]
+                corner = corners_unvisited[idx]
                 corner_unrot = rotate_point(0, 0, -orientation-90, (corner[0][0],corner[0][1]))
                 print("corner_unrot = ",corner_unrot)
                 corner_unrot_unknown.append(corner_unrot)
@@ -589,8 +584,10 @@ class navigator():
                 lstplnt_y_off_img = int(lst_plant_offset[1]/gsd_dm)
                 img_cntr = (int(drone_view.shape[1]/2),int(drone_view.shape[0]/2))
                 droneView_mask_bgr = cv2.cvtColor(droneView_mask, cv2.COLOR_GRAY2BGR)
-                lstplnt_on_img = (img_cntr[0] + lstplnt_x_off_img,img_cntr[1] + lstplnt_y_off_img)
-                cv2.circle(droneView_mask_bgr, lstplnt_on_img, 8, (0,0,255),4)
+
+                # Calculated location of last plant in the current row... Later we will compare this with the acutal location to estimate the error in our prediction
+                lst_plantloc_calc = (img_cntr[0] + lstplnt_x_off_img,img_cntr[1] + lstplnt_y_off_img)
+                cv2.circle(droneView_mask_bgr, lst_plantloc_calc, 8, (0,0,255),4)
 
                 cv2.line(c_slam_map_draw, fov_center, lst_plant_in_row, (0,128,0),2)
                 a = fov_center
@@ -598,15 +595,138 @@ class navigator():
                 dist_pt = (int((a[0]+b[0])/2),int((a[1]+b[1])/2))
                 cv2.putText(c_slam_map_draw, str(int(distance_from_center)), dist_pt, cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255))
                 
-                imshow("drone_view (Current)",drone_view)
                 imshow("droneView_mask_bgr",droneView_mask_bgr)
 
-            nxt_row_bbox = self.identify_row_strt(drone_view, droneView_mask,lstplnt_on_img,corrected_slope)
+            nxt_row_bbox = self.identify_row_strt(drone_view, droneView_mask,lst_plantloc_calc,corrected_slope)
 
         else:
             nxt_row_bbox = []
 
         return nxt_row_bbox
+
+
+    def est_nxt_row(self):
+
+        print("First row had following characteristics [Slope = {}, Y-intercept = {}, Drone Orientation = {}]".format(self.curr_row_slope,self.curr_row_yintercept,self.curr_drone_orientation))
+
+        h,w = image.shape[:2]
+        if slope!='NA':
+            ### here we are essentially extending the line to x=0 and x=width
+            ### and calculating the y associated with it
+            ##starting point
+            #y = slope*x + b
+            if slope <= 1:
+                px=0
+                py = (slope*px)+yiCntercept
+                ##ending point
+                qx=w
+                qy = (slope*qx)+yiCntercept
+            elif abs(slope)>50:
+                # We have a vertical line [So it spans from top of image to bottom]
+                #                         [On same column as all other points.....]
+                px = x[0] # Same column as point_a
+                py = 0    # Starting from Image top (0 height)
+                qx = x[0] # Same column as point_a
+                qy = h    # Ending at Image bottom (full height)
+
+            else:
+                # x = (y-b)/slope
+                py = 0
+                px = (py-yiCntercept)/slope
+                ## ending point
+                qy = h
+                qx = (qy-yiCntercept)/slope
+        else:
+            ### if slope is zero, draw a line with x=x1 and y=0 and y=height
+            px,py=x,0
+            qx,qy=x,h
+
+
+        cv2.line(image, (int(px), int(py)), (int(qx), int(qy)), (128, 0, 255), 2)
+
+
+    def est_nxt_row2(self,image_draw,bbox_cntr,orientation):
+        
+        r,c = image_draw.shape[0:2]
+        drone_loc = (int(image_draw.shape[1]/2),int(image_draw.shape[0]/2))
+
+        # [TESTING]: Line perpendicular to row slope is being calculated based on formula = (-1/plantrow_slope) [Recent change: Corrected from + to - of inverse of slope]
+        # Target : Was looking to find the area to look for next rows based on [Last Plant On Img , plant_row_slope_perp, found_closestPlant]
+        print("# Target : Was looking to find the area to look for next rows based on [Last Plant On Img , plant_row_slope_perp, found_closestPlant]")
+        rows_offset    = (    drone_loc[0] - bbox_cntr[0] ,    drone_loc[1] - bbox_cntr[1] )
+        rows_absoffset = (abs(drone_loc[0] - bbox_cntr[0]),abs(drone_loc[1] - bbox_cntr[1]))
+        rows_absmaxoffset = max(rows_absoffset[0],rows_absoffset[1])
+        # idx   [0 or 1] ==> [col or row] 
+        rows_maxoffset_idx = rows_absoffset.index(rows_absmaxoffset)
+        # value [+ or -] ==> [inc or dec]
+        rows_maxoffset_value = rows_offset[rows_maxoffset_idx]
+
+        pt_a = bbox_cntr
+        
+        row_init_orientation = degrees(atan(self.curr_row_slope))# row inital orientation (deg) 
+        offset_init_orientation = row_init_orientation - self.curr_drone_orientation
+        slope = tan( radians( offset_init_orientation  + orientation ) )
+        y_inter_init = self.curr_row_yintercept
+        
+        # y intercept computed from point a
+        # b              =  y(row) - (      m       * x(col))
+        y_inter = pt_a[1] - (slope*pt_a[0])
+        print("#############################  TESTING #####################################")
+        print("Initial slope = ",self.curr_row_slope)
+        print("Initial y_inter = ",self.curr_row_yintercept)
+
+        print("slope = ",slope)
+        print("y_inter = ",y_inter)
+        print("#############################  TESTING #####################################")
+
+        if (abs(slope)<1):
+            # Horizontal line ===> Look in x diorection for next point
+            if rows_maxoffset_value>=0:
+                x = c
+            else:
+                x = 0
+            y = int ( (slope * x) + y_inter )
+            print("slope is less then 1 ==> Horizontal Line")
+        else:
+            # vertical line ===> Look in y direction for next point
+            if rows_maxoffset_value>=0:
+                y = r
+            else:
+                y = 0
+            x = int ( (y - y_inter) / slope ) 
+            print("slope is greater then 1 ==> Vertical Line")
+
+        pt_b = (x,y)
+        print("pt_b = ",pt_b)
+
+        dist_strt = int( bbox_cntr[rows_maxoffset_idx] + (rows_maxoffset_value/2) )
+        if rows_maxoffset_idx==0:
+            # Distance is greater in cols So (MaxOffset) is in cols
+            x_strt = dist_strt# Set x_point as half of the distance in columns
+            y_strt = int ( (slope * x_strt) + y_inter )
+        else:
+            # Distance is greater in rows So (MaxOffset) is in rows
+            y_strt = dist_strt
+            # y = mx + b ==> x = (y-b)     /   m
+            x_strt = int( (y_strt-y_inter) / slope )
+        
+        pt_strt = (x_strt,y_strt)
+
+        # Finding the point of intersection between drone and the estimated next row, This will be our start loc
+        x_intersect = drone_loc[0]# At this particular column , Where will the line be at which row?
+        y_intersect = int ( (slope * x_intersect) + y_inter )
+        pt_intersect = (x_intersect,y_intersect)
+        print("[Test] drone_loc = ",drone_loc)
+        print("[Test] pt_intersect = ",pt_intersect)
+        print("[Test] pt_strt = ",pt_strt)
+
+        print("Computed in conditions = [rows_maxoffset_value] = {}".format(rows_maxoffset_value))
+        #cv2.line(image_draw, pt_a, pt_b, (0,50,0),int(self.avg_plant_width*2))
+        cv2.line(image_draw, pt_a, pt_b, (0,0,255),4)
+        imshow("Estimated Next Row", image_draw)
+
+        return pt_strt
+
 
     def navigate(self,drone_view,frame_draw,vel_msg,vel_pub,elevation,c_slam_map,c_slam_map_draw,fov_unrot_pts,fov_pts,d_pose,gsd_dm):
 
@@ -652,7 +772,7 @@ class navigator():
                     center_x = int(bbox[0] + (bbox[2]/2))
                     center_y = int(bbox[1] + (bbox[3]/2))             
                     path.append((center_x,center_y))
-            print("self.goal_iter = ",self.goal_iter)
+
             if path!=[]:
                 if not self.drone_motionplanner.goal_not_reached_flag:
                     #Reached final Goal ===> PARRTTTYYY !!
@@ -670,28 +790,31 @@ class navigator():
             print("[State]: Searching....")
             # Use prior plants to estimate the general row line
             nxt_row_bbox = self.est_line(drone_view,c_slam_map_draw,d_pose[2],gsd_dm,fov_unrot_pts,fov_pts)
-            #cv2.waitKey(0)
             
             if nxt_row_bbox!=[]:
                 # Found starting Points , Start traversing field
                 self.state = "changing_row"
                 # Initialize tracker with a single bbox
-                print("Initializing tracker with bbox = {}".format(nxt_row_bbox))
-                drone_view_bbox = drone_view.copy()
-                cv2.rectangle(drone_view_bbox,(nxt_row_bbox[0],nxt_row_bbox[1]), (nxt_row_bbox[0]+nxt_row_bbox[2],nxt_row_bbox[1]+nxt_row_bbox[3]), (128,0,255),2)
-                imshow("drone_view (Tracking bbox)", drone_view_bbox)
-                print("self.Tracker_.multiTracker.getObjects() = ",self.Tracker_.multiTracker.getObjects())
                 self.Tracker_.mode = "Detection"
                 self.Tracker_.track_multiple(drone_view, frame_draw, [nxt_row_bbox])
-                print("self.Tracker_.multiTracker.getObjects() = ",self.Tracker_.multiTracker.getObjects())
-                print("Initialized tracker with bbox = {}".format(nxt_row_bbox))
 
                 self.goal_iter = 0
+                # Append found plants row in the plants_in_the_field_container
+                self.plants_in_the_field.append(self.plants_in_a_row)
         
         elif self.state == "changing_row":
-            print("Tracking")
-            self.Tracker_.track_multiple(drone_view, frame_draw)
             print("[State]: Changing row!")
+
+            self.Tracker_.track_multiple(drone_view, frame_draw)
+
+            # Estimating the second row using [tracked bbox_center as the point +
+            #                                    using estimated slope of row]
+            bbox = self.Tracker_.tracked_bboxes[0]
+            # Centroid of bbox is at ((x+w)/2,(y+h)/2)
+            bbox_w,bbox_h = bbox[2:4]
+            bbox_cntr = ( int( bbox[0] + (bbox_w/2) ) , int( bbox[1] + (bbox_h/2) ) )
+            pt_strt = self.est_nxt_row2(drone_view.copy(), bbox_cntr,d_pose[2])
+            #cv2.waitKey(0)
             
             #angle_to_trn = int(degrees(atan(-(1 / self.curr_row_slope))))
             angle_to_goal = (degrees(atan(-(1 / self.curr_row_slope))))
@@ -703,39 +826,39 @@ class navigator():
             self.drone_motionplanner.move_to_next_row(drone_loc, angle_to_turn, vel_msg, vel_pub)
             # [Drone: MotionPlanning] Reach the (maze exit) by navigating the path previously computed
             if ( len(self.Tracker_.tracked_bboxes)==1 ):
-                for bbox in self.Tracker_.tracked_bboxes:
-                    # Centroid of bbox is at ((x+w)/2,(y+h)/2)
-                    bbox_w = bbox[2]
-                    bbox_h = bbox[3]
-                    bbox_loc = ( int( bbox[0] + (bbox_w/2) ) , int( bbox[1] + (bbox_h/2) ) )
-                    cv2.circle(frame_draw, bbox_loc, 4, (255,0,0),2)
-                    cv2.circle(frame_draw, drone_loc, 4, (255,255,255),2)
+                bbox = self.Tracker_.tracked_bboxes[0]
+                # Centroid of bbox is at ((x+w)/2,(y+h)/2)
+                bbox_w = bbox[2]
+                bbox_h = bbox[3]
+                bbox_loc = ( int( bbox[0] + (bbox_w/2) ) , int( bbox[1] + (bbox_h/2) ) )
+                cv2.circle(frame_draw, bbox_loc, 4, (255,0,0),2)
+                cv2.circle(frame_draw, drone_loc, 4, (255,255,255),2)
+                cv2.circle(frame_draw, pt_strt, 4, (0,128,255),3)
 
+                txt = "drone_loc = "+str(drone_loc)
+                txt2 = "bbox_loc = "+str(bbox_loc)
+                cv2.putText(frame_draw, txt, (50,300), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0),2)             
+                cv2.putText(frame_draw, txt2, (50,350), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0),2)   
+                print("angle_to_turn = {}, drone_loc[1] ={}, bbox_loc[1] = {}".format(angle_to_turn,drone_loc[1],bbox_loc[1]))
+                
+                # Finding greatest offset
 
-                    # # Finding the distance and angle between (current) bot location and the (current) mini-goal
-                    # angle_to_nxtgoal,_ = self.drone_motionplanner.angle_n_dist(drone_loc, bbox_loc)
-                    # # Computing the angle the bot needs to turn to align with the mini goal
-                    # bot_angle = 90 # Looking forwards
-                    # angle_to_turn2 = angle_to_nxtgoal - bot_angle
-                    # txt = "angle_to_nxtgoal = "+str(angle_to_nxtgoal)
-                    # txt2 = "angle_to_turn2 = "+str(angle_to_turn2)
-                    # cv2.putText(frame_draw, txt, (int(bbox[0]),int(bbox[1])), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0),2)             
-                    # cv2.putText(frame_draw, txt2, (int(bbox[0]),int(bbox[1])+50), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0),2)             
-                    
-                    txt = "drone_loc = "+str(drone_loc)
-                    txt2 = "bbox_loc = "+str(bbox_loc)
-                    cv2.putText(frame_draw, txt, (50,300), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0),2)             
-                    cv2.putText(frame_draw, txt2, (50,350), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0),2)   
-                    print("angle_to_turn = {}, drone_loc[1] ={}, bbox_loc[1] = {}".format(angle_to_turn,drone_loc[1],bbox_loc[1]))
-                    
-                    if angle_to_turn<5:
-                        # Row aligns with destination row (Almost)
-                        if abs(drone_loc[1]-bbox_loc[1])<5:
-                            path = [bbox_loc]
-                            self.state = "Start-Row"
-                            # Reset motionplanner for new go-to-goal call
-                            self.drone_motionplanner.path_iter = 0
-                            self.drone_motionplanner.goal_not_reached_flag = True
+                if angle_to_turn<5:
+                    # Row aligns with destination row (Almost)
+                    #if abs(drone_loc[1]-bbox_loc[1])<5:
+                    # Row align with destination row (Adjusting for cam_offset_to_center)
+                    if abs(drone_loc[1]-bbox_loc[1])<5:
+                    #if abs(drone_loc[1]-pt_intersect[1]+self.cam_offset_img)<3:
+                        path = [pt_strt,bbox_loc]
+                        self.state = "Start-Row"
+                        # Reset motionplanner for new go-to-goal call
+                        self.drone_motionplanner.path_iter = 0
+                        self.drone_motionplanner.goal_not_reached_flag = True
+                        self.goal_iter = 0
+                        # Resetting plant tagged for start of new row
+                        self.plant_tagged = (0,0)
+                        self.plants_tagged.clear()
+                        self.plants_in_a_row.clear()
                     
 
 
@@ -767,7 +890,9 @@ class navigator():
             # If drone is far from its goal but has already entered goal vicinity
             if ((dist(drone_loc,self.curr_goal)>goal_vicinity) and self.entered_goal_vicinity):
                 # Drone has exited goal area , We are now moving to the next goal
-                self.goal_iter +=1
+                if (self.goal_iter<len(path)-1):
+                    # we can only iterate to the next goal, if there is next goal present in path
+                    self.goal_iter +=1
                 # Reset entered_goal_vicinity boolean
                 self.entered_goal_vicinity = False
             # If drone is far from its goal
@@ -780,7 +905,6 @@ class navigator():
         plants_tg_txt = "plants_tagged = "+ str(len(self.plants_tagged))
         cv2.putText(c_slam_map_draw, plants_tg_txt, (50,400), cv2.FONT_HERSHEY_PLAIN, 2, (0,0,255),3)
 
-        #m,b = find_line_parameters(crnt,scnd)
         d_x,d_y,_ = d_pose
         c_x = int(c_slam_map_draw.shape[1]/2)
         c_y = int(c_slam_map_draw.shape[0]/2)

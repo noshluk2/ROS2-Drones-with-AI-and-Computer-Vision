@@ -41,10 +41,10 @@ def show_cluster(cluster_no=2):
     cv2.imshow(masking_cluster_text, masked_image)
 
 # read the image
-image = cv2.imread("drone_view.png")
+image = cv2.imread("/home/haiderabbasi/Development/r1_workspace/src/ROS2-Drones-with-AI-and-Computer-Vision/drone_view.png")
 
-r = cv2.selectROI("SelectROI",image)
-
+#r = cv2.selectROI("SelectROI",image)
+r =  [763, 160, 253, 238]
 # Crop image
 image = image[int(r[1]):int(r[1]+r[3]), int(r[0]):int(r[0]+r[2])]
 #image = cv2.GaussianBlur(image,(5,5),0)
