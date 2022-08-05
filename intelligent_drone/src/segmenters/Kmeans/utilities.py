@@ -184,16 +184,11 @@ def moving_average(numbers,window_size=3):
 
     print(moving_averages)
 
-def get_centroid(cnt,img=None):
-    
-    if img!=None:
-        cnts = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0]
-        cnt = cnts[0]
-
+def get_centroid(cnt):
     M = cv2.moments(cnt)
     if (M['m00']==0):
-        (cx,cy) = cv2.minEnclosingCircle(cnt)[0]        
-        return (int(cx),int(cy))
+        pt_a = cnt[0][0]
+        return (pt_a[0],pt_a[1])
     else:
         cx = int(M['m10']/M['m00'])
         cy = int(M['m01']/M['m00'])
@@ -324,6 +319,31 @@ def RetLargestContour(gray):
     if (Max_Cntr_idx!=-1):
         thresh = cv2.drawContours(thresh, cnts, Max_Cntr_idx, (255,255,255), -1) # [ contour = less then minarea contour, contourIDx, Colour , Thickness ]
     return thresh, LargestContour_Found
+
+def ret_largest_cnt(gray,cnts = []):
+    
+    LargestContour_Found = False
+    lrgest_obj_img = np.zeros(gray.shape,dtype=gray.dtype)
+    
+    if cnts == []:
+        bin_img = cv2.threshold(gray,0,255,cv2.THRESH_BINARY)[1]
+        #Find the two Contours for which you want to find the min distance between them.
+        cnts = cv2.findContours(bin_img, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[0]
+    
+    Max_Cntr_area = 0
+    Max_Cntr_idx= -1
+    for index, cnt in enumerate(cnts):
+        area = cv2.contourArea(cnt)
+        if area > Max_Cntr_area:
+            Max_Cntr_area = area
+            Max_Cntr_idx = index
+            LargestContour_Found = True
+
+    if (Max_Cntr_idx!=-1):
+        lrgest_obj_img = cv2.drawContours(lrgest_obj_img, cnts, Max_Cntr_idx, (255,255,255), -1) # [ contour = less then minarea contour, contourIDx, Colour , Thickness ]
+        return lrgest_obj_img, cnts[Max_Cntr_idx]
+    else:
+        return lrgest_obj_img,[]
 
 def remove_outliers(BW,MaxDistance,display_connections = False):
 

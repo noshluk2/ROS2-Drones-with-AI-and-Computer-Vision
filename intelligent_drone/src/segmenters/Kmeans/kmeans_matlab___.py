@@ -12,7 +12,11 @@ import time
 import concurrent.futures
 from utilities import ret_largest_cnt,imfill
 
-from multiprocessing import Array
+from multiprocessing import Array,Value
+
+#start = time.time()
+#end = time.time()
+#print("end - start = {}.sec".format(end - start))
 
 # Building some gabor kernels to filter image
 orientations = [0.0, np.pi / 2, np.pi, 3 * np.pi / 2]
@@ -145,6 +149,8 @@ def segment_kmeans(image,batch_process = False):
     return mask_largest,cnt_largest,scale
 
 
+
+
 def segment_canny(image):
     # Step 1: PreProcessing 
     # Keeping only the hue information seems to be critical for kmean to cluster what we truly intend to...
@@ -169,6 +175,10 @@ def segment_canny(image):
     return mask_largest,cnt_largest
 
 
+
+
+
+
 def segment(image,method="kmeans"):
     
     if method == "kmeans":
@@ -179,8 +189,7 @@ def segment(image,method="kmeans"):
         
         segment_canny()
 
-
-def detect(image,disp_mask=False):
+def detect(image):
     """
     (detect visually and structurally identifiable objects.)
   
@@ -229,12 +238,11 @@ def detect(image,disp_mask=False):
         else:
             b_rect = seg_rect
 
-    if disp_mask: 
-        plant_mask = cv2.rectangle(plant_mask,(seg_rect[0],seg_rect[1]), (seg_rect[0]+seg_rect[2],seg_rect[1]+seg_rect[3]), 255,2)
-        cv2.namedWindow("plant_mask",cv2.WINDOW_NORMAL)
-        cv2.imshow("plant_mask",plant_mask)
-        cv2.waitKey(0)
+    #plant_mask = cv2.rectangle(plant_mask,(seg_rect[0],seg_rect[1]), (seg_rect[0]+seg_rect[2],seg_rect[1]+seg_rect[3]), 255,2)
 
+    #cv2.namedWindow("plant_mask",cv2.WINDOW_NORMAL)
+    #cv2.imshow("plant_mask",plant_mask)
+    
     return b_rect
         
     
@@ -244,30 +252,48 @@ def main():
     #r = cv2.selectROI("SelectROI",image)
     r =  [763, 160, 253, 238]
     p_rect = Array('i', 4)
+    #updated = Value('i',False)
     updated = False
+    #print("updated b4 = ", updated.value )
+    print("updated b4 = ", updated )
     # Crop image
     image = image[int(r[1]):int(r[1]+r[3]), int(r[0]):int(r[0]+r[2])]
     
+    #mask = segment(image)
+    
+    # with concurrent.futures.ProcessPoolExecutor() as executor:
+    #     results = [executor.submit(detect,image)]
+    #     for f in concurrent.futures.as_completed(results):
+    #         print("results = ",f.result())
+    #         p_rect = f.result()
+    #         updated = True
     executor = concurrent.futures.ProcessPoolExecutor()
     results = executor.submit(detect,image)
-    if results.running():
-        print("results = ",results.result())
-    # while(1):
-    #     if not results.running():
-    #         # Done executing , Extract result
-    #         updated = True
-    #         p_rect = results.result()
-    #     if updated:
-    #         mask = cv2.rectangle(image,(p_rect[0],p_rect[1]), (p_rect[0]+p_rect[2],p_rect[1]+p_rect[3]), (0,255,0),2)
+    #for f in concurrent.futures.as_completed(results):
+    #    print("results = ",f.result())
+    #    p_rect = f.result()
+    #    updated = 1            
+    #print("results = ",results.result())
+    #print("Updated = ",updated.value)     
+    #print("results = ",results.result())
+    print("results.isrunning? = ",results.running())
+    #p_rect = detect(image)
+    while(1):
+        if not results.running():
+            # Done executing , Extract result
+            updated = True
+            p_rect = results.result()
+        if updated:
+            mask = cv2.rectangle(image,(p_rect[0],p_rect[1]), (p_rect[0]+p_rect[2],p_rect[1]+p_rect[3]), (0,255,0),2)
 
-    #         #cv2.namedWindow("mask",cv2.WINDOW_NORMAL)
-    #         #cv2.imshow("mask",mask)
-    #         #cv2.waitKey(0)
-    #         break
-    #     else:
-    #         pass
-    #         #print("Not updated yet")
+            cv2.namedWindow("mask",cv2.WINDOW_NORMAL)
+            cv2.imshow("mask",mask)
+            cv2.waitKey(0)
+            break
+        else:
+            
+            print("Not updated yet")
 
 if __name__ == "__main__":
-    cProfile.run('main()',sort='cumtime')
-    #main()
+    #cProfile.run('main()',sort='cumtime')
+    main()
