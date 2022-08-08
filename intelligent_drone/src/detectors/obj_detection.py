@@ -7,7 +7,7 @@ import cProfile
 
 import concurrent.futures
 
-from utilities import ret_largest_cnt,imfill
+from utilities.utilities import ret_largest_cnt,imfill
 
 from multiprocessing import Array
 
@@ -183,7 +183,7 @@ class plant_detector:
             self.__segment_canny()
 
 
-    def detect(self,image,disp_mask=False):
+    def detect(self,image,avg_obj_width = None,disp_mask=False):
         """
         (detect visually and structurally identifiable objects.)
     
@@ -206,6 +206,12 @@ class plant_detector:
 
         
         plant_mask,plant_cnt = self.__segment_canny(image)
+        
+        if ( (avg_obj_width != None) and len(plant_cnt)!=0 ):
+            obj_width = (cv2.boundingRect(plant_cnt))[2]
+            if obj_width < (avg_obj_width/2):
+                # Sorry, You found a dud ==> Erasing....
+                plant_cnt = []
 
         # if plant was not segmented using Canny (faster) method . Resort to __kmeans for segmentaion.
         if len(plant_cnt)==0:
@@ -241,47 +247,3 @@ class plant_detector:
         return b_rect
             
         
-
-def main():
-    image = cv2.imread('/home/haiderabbasi/Development/r1_workspace/src/ROS2-Drones-with-AI-and-Computer-Vision/drone_view.png')
-    #r = cv2.selectROI("SelectROI",image)
-    r =  [763, 160, 253, 238]
-    
-    # To share data acroos multiple processes we need to create a shared adress space. 
-    # Here we use multiprocessing.Array which stores an Array of c data types and can be shared along multiple processes
-    p_rect = Array('i', 4) # Array of integer type of length 4 ==> Used here for sharing the computed bbox
-    
-    updated = False
-    # Crop image
-    image = image[int(r[1]):int(r[1]+r[3]), int(r[0]):int(r[0]+r[2])]
-    p_detector = plant_detector()
-    
-    
-    # Creating an object (executor) of the process pool executor in concurrent.futures for multiprocessing
-    executor = concurrent.futures.ProcessPoolExecutor()
-    # Schedule a function in the executor and returns a future object (results)
-    results = executor.submit(p_detector.detect,image)
-    
-    
-    # Check if process has done executing, then retreive its result using futureobject.result()
-    if results.running():
-        print("results = ",results.result())
-
-    # while(1):
-    #     if not results.running():
-    #         # Done executing , Extract result
-    #         updated = True
-    #         p_rect = results.result()
-    #     if updated:
-    #         mask = cv2.rectangle(image,(p_rect[0],p_rect[1]), (p_rect[0]+p_rect[2],p_rect[1]+p_rect[3]), (0,255,0),2)
-
-    #         #cv2.namedWindow("mask",cv2.WINDOW_NORMAL)
-    #         #cv2.imshow("mask",mask)
-    #         #cv2.waitKey(0)
-    #         break
-    #     else:
-    #         pass
-    #         #print("Not updated yet")
-
-if __name__ == "__main__":
-    main()

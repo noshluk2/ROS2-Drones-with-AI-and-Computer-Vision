@@ -16,11 +16,7 @@ from sensor_msgs.msg import Range
 import time
 import math
 import numpy as np
-from numpy import interp
-import os
-
-from motionplanners.drone_motionplanning import drone_motionplanner
-from trackers.goal_tracker import Tracker
+# import os
 
 from utilities.utitlities_pi import euler_from_quaternion,calc_focalLen_h_pix
 from utilities.utilities import ordrpts,imshow
@@ -48,10 +44,8 @@ class vision_drive:
     self.capture_elevation = 4.5
     self.time_elasped = 0
     
-    cv2.namedWindow("UAV_video_feed",cv2.WINDOW_NORMAL)
-    self.mini_goals = []
     self.start_navigating = False
-    self.img_no = 0
+    # self.img_no = 0
 
     self.navigator_ = navigator()
     
@@ -87,7 +81,7 @@ class vision_drive:
             print("Reached required height")
             if self.required_elevation==self.capture_elevation:
               self.attained_capture_elevation = True
-              print("Reached Capture height")
+              print("Reached Capture height",self.img_w)
               if self.img_w!=0:
                 altitude_m = sonar_data
                 altitude_mm = altitude_m * 1000
@@ -110,17 +104,17 @@ class vision_drive:
 
 
 
-  def get_centr_img(self,frame,perc = 20):
-    rows = frame.shape[0]
-    cols = frame.shape[1]
-    centr = (int(rows/2),int(cols/2))
+  # def get_centr_img(self,frame,perc = 20):
+  #   rows = frame.shape[0]
+  #   cols = frame.shape[1]
+  #   centr = (int(rows/2),int(cols/2))
 
-    crop_perc = perc/200
-    img_cropped = frame[centr[0]-int(rows*(crop_perc)):centr[0]+int(rows*(crop_perc)),
-                        centr[1]-int(cols*(crop_perc)):centr[1]+int(cols*(crop_perc))
-                       ]
+  #   crop_perc = perc/200
+  #   img_cropped = frame[centr[0]-int(rows*(crop_perc)):centr[0]+int(rows*(crop_perc)),
+  #                       centr[1]-int(cols*(crop_perc)):centr[1]+int(cols*(crop_perc))
+  #                      ]
 
-    return img_cropped
+  #   return img_cropped
 
 
   def get_drone_pose(self):
@@ -250,8 +244,8 @@ class vision_drive:
 
     # [CSLAM] Drone pose being overlayed on map in text 
     if putText:
-      pose_txt = "[X,Y,Orient] = ["+str(x_off)+","+str(y_off)+","+str(orientation)+"]"
-      pose_orig_txt = "[XOrig,YOrig,Orient] = ["+str(x)+","+str(y)+","+str(orientation)+"]"
+      pose_txt = "[X,Y,Orient] = ["+str(x_off)+","+str(y_off)+","+str(int(orientation))+"]"
+      pose_orig_txt = "[XOrig,YOrig,Orient] = ["+str(x)+","+str(y)+","+str(int(orientation))+"]"
 
       c_slam_map_draw = cv2.putText(c_slam_map_draw,pose_txt, (50,50), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255),1)
       c_slam_map_draw = cv2.putText(c_slam_map_draw,pose_orig_txt, (50,100), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255),1)
@@ -297,7 +291,7 @@ class vision_drive:
 
 
   def video_feed_cb(self,data,grbg):
-    
+
     frame = self.bridge.imgmsg_to_cv2(data,'bgr8')
     frame_draw = frame.copy()
 
@@ -324,15 +318,15 @@ class vision_drive:
           
       else:
 
-        if self.start_navigating:
-            self.img_no = self.img_no + 1
-            img_dir = os.path.abspath("intelligent_drone/src/data/is_plant_data")
-            if not os.path.isdir(img_dir):
-                os.mkdir(img_dir)
-            img_name = img_dir + "/" +str(self.img_no)+".png"
-            img_cropped = self.get_centr_img(frame,perc=40)
-            #cv2.imwrite(img_name,img_cropped)
-            print("start navigating")
+        # if self.start_navigating:
+        #     self.img_no = self.img_no + 1
+        #     img_dir = os.path.abspath("intelligent_drone/src/data/is_plant_data")
+        #     if not os.path.isdir(img_dir):
+        #         os.mkdir(img_dir)
+        #     img_name = img_dir + "/" +str(self.img_no)+".png"
+        #     img_cropped = self.get_centr_img(frame,perc=40)
+        #     #cv2.imwrite(img_name,img_cropped)
+        #     print("start navigating")
             
             self.navigator_.navigate(frame, frame_draw,self.vel_msg,self.vel_pub,self.sonar_curr,self.c_slam_map,c_slam_map_draw,fov_unrot_pts,fov_pts,self.drone_pose,self.GSD)
 

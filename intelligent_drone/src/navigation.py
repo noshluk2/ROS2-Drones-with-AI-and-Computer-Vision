@@ -12,6 +12,12 @@ from motionplanners.drone_motionplanning import drone_motionplanner
 from math import atan,degrees,tan,radians
 
 from collections import deque
+
+from detectors.obj_detection import plant_detector
+import concurrent.futures
+from multiprocessing import Array
+import time
+
 class navigator():
     def __init__(self):
         self.state = "init"
@@ -48,6 +54,19 @@ class navigator():
 
         self.entered_goal_vicinity_map = False
 
+        # Creating an object (executor) of the process pool executor in concurrent.futures for multiprocessing
+        self.executor = concurrent.futures.ProcessPoolExecutor()
+        self.p_detector = plant_detector()
+        self.p_detector_results = None # Container to store the futures object retrieved from using the pp_exector to run method asynchornously
+        # To share data acroos multiple processes we need to create a shared adress space. 
+        # Here we use multiprocessing.Array which stores an Array of c data types and can be shared along multiple processes
+        self.p_detector_bbox = Array('i', 4) # Array of integer type of length 4 ==> Used here for sharing the computed bbox
+        self.db_initial_dist = None
+        self.moving_to_next_row = False
+        self.aligned_to_row_strt = False
+        self.turned_to_row_strt = False
+
+        self.start_time = None
 
     @staticmethod
     def find_nav_strt(img_centroids,rot_rect,rows,cols,centroids):
@@ -190,7 +209,7 @@ class navigator():
 
         return bboxes
 
-    def identify_row_strt(self,drone_view,mask,lst_plantloc_calc,corrected_slope):
+    def identify_row_strt(self,drone_view,mask,lst_plantloc_calc):
         # Converting to hls color space to make light invariant
         hls = cv2.cvtColor(drone_view, cv2.COLOR_BGR2HLS)
         hue = hls[:,:,0]
@@ -326,7 +345,7 @@ class navigator():
         
         image_list = [drone_view,hue_edges,hue_edges_closed,field_mask_rot,field_mask_rot_Unvisited,
                       hue_edges_centroids,hue_edges_centroids_Unvisited,drone_view_nxtrow_plant,estimated_nxt_rows_mask]
-        imshow_stage(image_list,"identify_row_strt",corrected_slope)
+        imshow_stage(image_list,"identify_row_strt")
 
         return p_bbox
 
@@ -383,7 +402,6 @@ class navigator():
             slope = parameters[0]
             yiCntercept = parameters[1]
             
-            corrected_slope = False
             if residuals>1000:
                 print("residuals (Error) is toooo high !!!!= ",residuals)
                 print("(Initial) slope",slope)
@@ -405,7 +423,6 @@ class navigator():
                     yiCntercept = y[0] - (slope*x[0])
                     print("#### (Corrected) Slope!",slope)
                     print("#### (Corrected) yiCntercept!",yiCntercept)
-                    corrected_slope = True
 
 
             print("slope",slope)
@@ -436,10 +453,10 @@ class navigator():
                     #                         [On same column as all other points.....]
                     px = x[0] # Same column as point_a
                     py = 0    # Starting from Image top (0 height)
-                    qx = x[0] # Same column as point_a
+                    qx = x[1] # Same column as point_a
                     qy = h    # Ending at Image bottom (full height)
                     # Because of assuming an exact vertical line, Things might need a little expansion
-                    mask_scale = 1.5
+                    mask_scale = 3
 
                 else:
                     # x = (y-b)/slope
@@ -461,18 +478,15 @@ class navigator():
             drone_trajectory = np.zeros((c_slam_map_draw.shape[0],c_slam_map_draw.shape[1]),np.uint8)
             cv2.line(drone_trajectory, (int(px), int(py)), (int(qx), int(qy)), 255, int(mask_scale*plant_wid_dm))
             drone_trajectory=imfill(drone_trajectory,False,self.drone_strt_loc_map)[0]
-            cv2.imshow("drone (trajectory) ",drone_trajectory)
             
             drone_fov = np.zeros_like(drone_trajectory)
             cv2.fillPoly(drone_fov, [fov_pts], 255)
-            cv2.imshow("drone_fov ",drone_fov)
 
             fov_cnts = cv2.findContours(drone_fov, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0]
 
             #drone_fov_unvisited = cv2.bitwise_and(drone_trajectory, drone_trajectory,mask = drone_fov)
             drone_fov_unvisited = cv2.subtract(drone_fov,drone_trajectory)
             drone_fov_unvisited[drone_fov_unvisited>0] = 255
-            cv2.imshow("drone_fov (Unvisited) ",drone_fov_unvisited)
 
             cnts = cv2.findContours(drone_fov_unvisited, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0]
 
@@ -496,11 +510,9 @@ class navigator():
             
             for pt in closest_pts_on_fov:
                 cv2.circle(drone_fov_unvisited_pts_fov, (pt[0],pt[1]), 8, (255, 255, 0), -1)
-            cv2.imshow("drone_fov (Unvisited) pts_fov!",drone_fov_unvisited_pts_fov)
             
             drone_fov_unvisited_pts_unrot_fov = drone_fov_unvisited_pts_fov.copy()
             cv2.polylines(drone_fov_unvisited_pts_unrot_fov, [fov_unrot_pts], True, (0,0,255),3)
-            cv2.imshow("drone_fov (Unvisited) pts_unrot_fov!",drone_fov_unvisited_pts_unrot_fov)
             print("closest_pts_indices = ",closest_pts_indices)
 
             # list representing corners_unvisited(tuple) of the drone view in clockwise order [Top,b-left,end,top-right]
@@ -533,7 +545,6 @@ class navigator():
             cv2.putText(drone_fov_unvisited_pts_unrot_fov2, "pt_X", (pt_X_top[0]-60,pt_X_top[1]-30), cv2.FONT_HERSHEY_PLAIN, 2, (255,0,0),3)
             cv2.putText(drone_fov_unvisited_pts_unrot_fov2, "pt_Y", (pt_Y_btm[0]-60,pt_Y_btm[1]+30), cv2.FONT_HERSHEY_PLAIN, 2, (255,0,0),3)
             
-            cv2.imshow("drone_fov (Unvisited) pts_unrot_fov2!",drone_fov_unvisited_pts_unrot_fov2)
 
             itr = 0
             for idx,pt_indx in enumerate(closest_pts_indices):
@@ -567,7 +578,6 @@ class navigator():
                                            ,np.int32)     
             droneView_mask_pts = droneView_mask_pts.reshape((-1, 1, 2))
             cv2.fillPoly(droneView_mask, [droneView_mask_pts], 255)
-            cv2.imshow("droneView_mask (Unvisited) ",droneView_mask)
             
             lst_plant_in_row_unrotated = self.plants_in_a_row[len(self.plants_in_a_row)-1]
             fov_center = get_centroid(fov_cnts[0])
@@ -598,24 +608,32 @@ class navigator():
                 dist_pt = (int((a[0]+b[0])/2),int((a[1]+b[1])/2))
                 cv2.putText(c_slam_map_draw, str(int(distance_from_center)), dist_pt, cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255))
                 
-                imshow("droneView_mask_bgr",droneView_mask_bgr)
 
-            nxt_row_bbox = self.identify_row_strt(drone_view, droneView_mask,lst_plantloc_calc,corrected_slope)
+            nxt_row_bbox = self.identify_row_strt(drone_view, droneView_mask,lst_plantloc_calc)
 
         else:
             nxt_row_bbox = []
 
+        image_list = [drone_trajectory,drone_fov,drone_fov_unvisited,drone_fov_unvisited_pts_fov,
+                      drone_fov_unvisited_pts_unrot_fov,drone_fov_unvisited_pts_unrot_fov2,droneView_mask,
+                      droneView_mask_bgr]
+        imshow_stage(image_list,"est_line")
+
+
         return nxt_row_bbox
 
 
-    def est_nxt_row2(self,image_draw,bbox_cntr,orientation):
+    def est_nxt_row(self,image_draw,bbox,orientation):
+
+        # Centroid of bbox is at ((x+w)/2,(y+h)/2)
+        bbox_w,bbox_h = bbox[2:4]
+        bbox_cntr = ( int( bbox[0] + (bbox_w/2) ) , int( bbox[1] + (bbox_h/2) ) )
         
         r,c = image_draw.shape[0:2]
         drone_loc = (int(image_draw.shape[1]/2),int(image_draw.shape[0]/2))
 
         # [TESTING]: Line perpendicular to row slope is being calculated based on formula = (-1/plantrow_slope) [Recent change: Corrected from + to - of inverse of slope]
         # Target : Was looking to find the area to look for next rows based on [Last Plant On Img , plant_row_slope_perp, found_closestPlant]
-        print("# Target : Was looking to find the area to look for next rows based on [Last Plant On Img , plant_row_slope_perp, found_closestPlant]")
         rows_offset    = (    drone_loc[0] - bbox_cntr[0] ,    drone_loc[1] - bbox_cntr[1] )
         rows_absoffset = (abs(drone_loc[0] - bbox_cntr[0]),abs(drone_loc[1] - bbox_cntr[1]))
         rows_absmaxoffset = max(rows_absoffset[0],rows_absoffset[1])
@@ -625,7 +643,6 @@ class navigator():
         rows_maxoffset_value = rows_offset[rows_maxoffset_idx]
 
         pt_a = bbox_cntr
-        pt_msk_strt = bbox_cntr
         
         row_init_orientation = degrees(atan(self.curr_row_slope))# row inital orientation (deg) 
         offset_init_orientation = row_init_orientation - self.curr_drone_orientation
@@ -635,56 +652,52 @@ class navigator():
         # y intercept computed from point a
         # b              =  y(row) - (      m       * x(col))
         y_inter = pt_a[1] - (slope*pt_a[0])
-        print("#############################  TESTING #####################################")
-        print("Initial slope = ",self.curr_row_slope)
-        print("Initial y_inter = ",self.curr_row_yintercept)
-
-        print("slope = ",slope)
-        print("y_inter = ",y_inter)
-        print("#############################  TESTING #####################################")
 
         if (abs(slope)<1):
             # Horizontal line ===> Look in x diorection for next point
-            print("slope is less then 1 ==> Horizontal Line")
+            print("[est_nxt_row] slope is less then 1 ==> Horizontal Line")
             if rows_maxoffset_value>=0:
                 x = c
-                x_end = 0
+                #x_end = 0
             else:
                 x = 0
-                x_end = c
+                #x_end = c
             y = int ( (slope * x) + y_inter )
-            y_end = int ( (slope * x_end) + y_inter )
+            #y_end = int ( (slope * x_end) + y_inter )
         else:
             # vertical line ===> Look in y direction for next point
-            print("slope is greater then 1 ==> Vertical Line")
+            print("[est_nxt_row] slope is greater then 1 ==> Vertical Line")
             if rows_maxoffset_value<=0:
                 y = r
-                y_end = 0
+                #y_end = 0
             else:
                 y = 0
-                y_end = r
+                #y_end = r
             x = int ( (y - y_inter) / slope ) 
-            x_end = int ( (y_end - y_inter) / slope ) 
+            #x_end = int ( (y_end - y_inter) / slope ) 
 
         pt_b = (x,y)
+        
+        # Start should be slightly above the bbox that we have.[ Col is the bbox center but,
+        #                                          height is the start of bbox (Ignoring the tracked plant in mask)]
+        pt_msk_strt = ( bbox_cntr[0],int( bbox_cntr[1] - bbox_h ) )
+        # We are only interested with ROI for the next row. Our alignment mechanism is seperate. Once drone
+        # does align with the first plant. Second is further ahead. Meaning ==> ROI is somewhere on the top 
+        #                                                                       (y-row=0), then we compute x_end
+        y_end = 0
+        x_end = int ( (y_end - y_inter) / slope ) 
         pt_msk_end = (x_end,y_end)
-        print("pt_b = ",pt_b)
-        print("pt_msk_end = ",pt_msk_end)
-
 
         # Finding the point of intersection between drone and the estimated next row, This will be our start loc
         #x_intersect = drone_loc[0]# At this particular column , Where will the line be at which row?
         #y_intersect = int ( (slope * x_intersect) + y_inter )
         #pt_intersect = (x_intersect,y_intersect)
-        print("[Test] drone_loc = ",drone_loc)
-        #print("[Test] pt_intersect = ",pt_intersect)
-        print("[Test] pt_msk_end = ",pt_msk_end)
+        #print("[est_nxt_row] pt_intersect = ",pt_intersect)
 
-        print("Computed in conditions = [rows_maxoffset_value] = {}".format(rows_maxoffset_value))
 
         est_row_mask = np.zeros((image_draw.shape[0],image_draw.shape[1]),np.uint8)
-        cv2.line(est_row_mask, pt_msk_strt, pt_msk_end, 255,int(self.avg_plant_width*2))
-        
+        cv2.line(est_row_mask, pt_msk_strt, pt_msk_end, 255,int(self.avg_plant_width))
+        cv2.circle(image_draw, pt_msk_strt, 4, (255,255,0),3)
         cv2.line(image_draw, pt_a, pt_b, (0,0,255),4)
         imshow("Estimated Next Row", image_draw)
         imshow("est_row_mask", est_row_mask)
@@ -740,6 +753,18 @@ class navigator():
 
             if path!=[]:
                 if not self.drone_motionplanner.goal_not_reached_flag:
+                    #pt_c = estimate_pt(path[0],path[1],"start",4/3)
+                    # Idea, Before reaching plant 1 and plant 2 in the row. First reach a point half way 
+                    #       from bbox_loc to the plant 1 (Half way in rows as the plants are in front of it)
+                    
+                    #row_c = int( (path[1] + drone_loc[1]) / 2 )# pt will be half way from drone loc to plant 1 (rows)
+                    #col_c = int ( (row_c - y_inter) / slope ) 
+                    #pt_c = (col_c,row_c)
+                    #pt_c = estimate_pt(path[0],path[1],"start")
+                    #while(pt_c[1] > drone_loc[1]):# Found point is before the drone , find half of point and first plant
+                    #    pt_c = (int((path[0][0]+pt_c[0])/2),int((path[0][1]+pt_c[1])/2))
+                    #path = [pt_c] + path
+                #else:
                     #Reached final Goal ===> PARRTTTYYY !!
                     self.state = "Navigating_row"
                     self.goal_iter = 0       
@@ -768,27 +793,26 @@ class navigator():
                 self.plants_in_the_field.append(self.plants_in_a_row)
         
         elif self.state == "changing_row":
-            print("[State]: Changing row!")
+            print("[navigate] [State]: Changing row!")
 
             self.Tracker_.track_multiple(drone_view, frame_draw)
 
             # Estimating the second row using [tracked bbox_center as the point +
             #                                    using estimated slope of row]
             bbox = self.Tracker_.tracked_bboxes[0]
-            # Centroid of bbox is at ((x+w)/2,(y+h)/2)
-            bbox_w,bbox_h = bbox[2:4]
-            bbox_cntr = ( int( bbox[0] + (bbox_w/2) ) , int( bbox[1] + (bbox_h/2) ) )
-            est_row_mask = self.est_nxt_row2(drone_view.copy(), bbox_cntr,d_pose[2])
+
+            est_row_mask = self.est_nxt_row(drone_view.copy(),bbox,d_pose[2])
             #cv2.waitKey(0)
             
-            #angle_to_trn = int(degrees(atan(-(1 / self.curr_row_slope))))
             angle_to_goal = (degrees(atan(-(1 / self.curr_row_slope))))
             # Computing the angle the bot needs to turn to align with the mini goal
             drone_orientation   = d_pose[2]
             angle_to_turn = angle_to_goal - drone_orientation 
-            #print("drone_orientation = ",drone_orientation)
-            print("angle_to_turn = ",angle_to_turn)
-            self.drone_motionplanner.move_to_next_row(drone_loc, angle_to_turn, vel_msg, vel_pub)
+
+            if not self.aligned_to_row_strt:
+                # If we are not already moving to next row, move to next row then
+                self.drone_motionplanner.move_to_next_row(drone_loc, angle_to_turn, vel_msg, vel_pub)
+            
             # [Drone: MotionPlanning] Reach the (maze exit) by navigating the path previously computed
             if ( len(self.Tracker_.tracked_bboxes)==1 ):
                 bbox = self.Tracker_.tracked_bboxes[0]
@@ -801,57 +825,87 @@ class navigator():
 
                 txt = "drone_loc = "+str(drone_loc)
                 txt2 = "bbox_loc = "+str(bbox_loc)
+                
+                txt3 = "self.moving_to_next_row = " + str(self.moving_to_next_row)
+                txt4 = "self.aligned_to_row_strt = " + str(self.aligned_to_row_strt)
                 cv2.putText(frame_draw, txt, (50,300), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0),2)             
                 cv2.putText(frame_draw, txt2, (50,350), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0),2)   
-                print("angle_to_turn = {}, drone_loc[1] ={}, bbox_loc[1] = {}".format(angle_to_turn,drone_loc[1],bbox_loc[1]))
+                cv2.putText(frame_draw, txt3, (50,400), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0),2)   
+                cv2.putText(frame_draw, txt4, (50,450), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0),2)   
+                print("[navigate] angle_to_turn = {}, drone_loc[1] ={}, bbox_loc[1] = {}".format(angle_to_turn,drone_loc[1],bbox_loc[1]))
                 
-                # Finding greatest offset
-
-                if angle_to_turn<5:
+                # Check if we have algined perpendicular to estimated row.
+                if ( (angle_to_turn<5) or self.moving_to_next_row):
+                    self.moving_to_next_row = True
                     # Row aligns with destination row (Almost)
-                    if abs(drone_loc[1]-bbox_loc[1])<5:
+                    if ( (abs(drone_loc[1]-bbox_loc[1])<5) or self.aligned_to_row_strt ):
+                        self.aligned_to_row_strt = True
                         path = [bbox_loc]
 
                         # [Testing]: Extracting initial distance between drone and bbox when drone is aligned to bbox
                         angle_to_bbox,distance_to_bbox = self.drone_motionplanner.angle_n_dist(drone_loc, bbox_loc)
-                        angle_to_turn_bbox = angle_to_bbox - drone_orientation
-                        if ( (angle_to_turn_bbox<5) and ( not self.aligned_to_row_strt ) ): 
+                        angle_to_turn_bbox = angle_to_bbox - 90
+                        txt5 = "self.turned_to_row_strt = " + str(self.turned_to_row_strt) + "angle_to_turn_bbox = "+ str(angle_to_turn_bbox)
+                        cv2.putText(frame_draw, txt5, (50,550), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0),2)   
+
+                        if ( (angle_to_turn_bbox<5) and ( not self.turned_to_row_strt ) ): 
                             # We are now aligned to row start
-                            self.aligned_to_row_strt = True
+                            self.turned_to_row_strt = True
                             self.db_initial_dist = distance_to_bbox
                         
                         if (self.db_initial_dist!=None):
-                            # if current distance is half of initial distance
+                            # if current distance is 75% of initial distance
                             #      This is the time to act (Use the detector to detect and track next plant)
-                            if distance_to_bbox <= (self.db_initial_dist/2):
+                            if distance_to_bbox <= (self.db_initial_dist*0.75):
                                 # We use detector to detect second plant present inside area
                                 #                                   Suggested by the estiamted row mask
                                 estimated_row_mask_cnt = cv2.findContours(est_row_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0]
                                 r = cv2.boundingRect(estimated_row_mask_cnt[0])
                                 dv_est_nxtrow = drone_view[int(r[1]):int(r[1]+r[3]), int(r[0]):int(r[0]+r[2])]
-                                plant_mask,plant_rect,plant_found = kmeans.detect(dv_est_nxtrow)
-                                imshow("Estimated Plant Location [K-Means]", plant_mask)
 
-                                # Adjusting for offset of cropping                            
-                                plant_2_bbox = [plant_rect[0]+r[0],plant_rect[1]+r[1],plant_rect[2],plant_rect[3]]
+                                #plant_mask,plant_rect,plant_found = kmeans.detect(dv_est_nxtrow)
+                                # Schedule a function in the executor and returns a future object (results)
+                                if self.start_time == None:
+                                    self.p_detector_results = self.executor.submit(self.p_detector.detect,dv_est_nxtrow,self.avg_plant_width)
+                                    self.start_time = time.time()
+                                else:
+                                    elasped_time = time.time() - self.start_time
+                                    print("elasped_time = ",elasped_time)
+                                    if (elasped_time % 1)< 0.2:
+                                        print("1 sec elasped... Check our executor for result!")
+                                        if not self.p_detector_results.running():
+                                            # Asynchrnous plant detection has been completed. You may retrieve the plant location now
+                                            # [Beware]: Time has elasped since estimated plantrow mask was passed. Drone would have moved by now
+                                            #            Adjust for the drone pose change [Rotation & Position] applying odometry changes to the computed bbox
+                                            self.p_detector_bbox = self.p_detector_results.result()
 
+                                            # Adjusting for the drone movement caused by the wait time for retrieving bbox                            
+                                            plant_rect = self.p_detector_bbox                               
 
-                                if plant_found:
-                                    cntr = get_centroid(None,plant_mask)
-                                    # Adjusting for offset of cropping
-                                    plnt_b_cntroid = (cntr[0]+r[0],cntr[1]+r[1])
-                                    cv2.circle(drone_view, plnt_b_cntroid, 4, (0,0,255),2)
-                                    imshow("drone_view [Plant B]", drone_view)
-                                    cv2.waitKey(0)
+                                            cv2.rectangle(dv_est_nxtrow, (plant_rect[0],plant_rect[1]), (plant_rect[0]+plant_rect[2],plant_rect[1]+plant_rect[3]), (128,0,255),3)
+                                            imshow("Est. Row [Det. Plant]", dv_est_nxtrow)
 
-                                    # Initialize tracker with a single bbox
-                                    bboxes = [bbox_loc,plant_2_bbox]
-                                    self.Tracker_.mode = "Detection"
-                                    self.Tracker_.track_multiple(drone_view, frame_draw, bboxes)
-                                    self.goal_iter = 0                                    
-                                    self.state = "Start-Row"
+                                            # Adjusting for offset of cropping     
+                                            drone_view_det_plant = drone_view.copy()                       
+                                            plant_2_bbox = (plant_rect[0]+r[0],plant_rect[1]+r[1],plant_rect[2],plant_rect[3])
+                                            cv2.rectangle(drone_view_det_plant, (plant_2_bbox[0],plant_2_bbox[1]), (plant_2_bbox[0]+plant_2_bbox[2],plant_2_bbox[1]+plant_2_bbox[3]), (0,255,0),3)
+                                            imshow("Drone View [Det. Plant]", drone_view_det_plant)
 
-                        
+                                            if self.p_detector_bbox[2] != 0:
+                                                bbox_2 = plant_2_bbox
+                                                plnt_b_cntroid = ( int(bbox_2[0] + (bbox_2[2]/2)), int(bbox_2[1] + (bbox_2[3]/2)) )      
+                                                cv2.circle(drone_view_det_plant, plnt_b_cntroid, 4, (0,0,255),2)
+                                                imshow("Drone View [Det. Plant]", drone_view_det_plant)
+                                                #cv2.waitKey(0)
+
+                                                # Initialize tracker with a single bbox
+                                                bboxes = [bbox,plant_2_bbox]
+                                                self.Tracker_.mode = "Detection"
+                                                self.Tracker_.track_multiple(drone_view, frame_draw, bboxes)
+                                                self.goal_iter = 0                                    
+                                                self.state = "Start-Row"
+
+                            
                         
                         # Initially. We Switch goal_not_reached from False to True. To activate go-to-goal (start)
                         if not self.drone_motionplanner.goal_not_reached_flag:
@@ -889,11 +943,13 @@ class navigator():
         # Determining the curr goal for drone.
         goal_vicinity = 60        
         if path!=[]:
-            print("Current path = ",path)
+            print("[navigate] Current path = ",path," [Goal Iter] = ",self.goal_iter)
+            print("[navigate] drone_loc = {} <->  self.curr_goal = {}".format(drone_loc,self.curr_goal))
             # Determining curr goal from path using goal_iter [member of navigator clasa]
             self.curr_goal = (path[self.goal_iter][0],path[self.goal_iter][1])
             # If drone is far from its goal but has already entered goal vicinity
             if ((dist(drone_loc,self.curr_goal)>goal_vicinity) and self.entered_goal_vicinity):
+                print("[navigate] {Exiting Goal Vicinity!!!} ......")
                 # Drone has exited goal area , We are now moving to the next goal
                 if (self.goal_iter<len(path)-1):
                     # we can only iterate to the next goal, if there is next goal present in path
@@ -902,9 +958,10 @@ class navigator():
                 self.entered_goal_vicinity = False
             # If drone is far from its goal
             elif (dist(drone_loc,self.curr_goal)>goal_vicinity):
-                print("Still Far from GOall ......")
+                print("[navigate] Still Far from GOall ......")
             # If drone is within goal vicinity , then set boolean to True.
             else:
+                print("[navigate] (Entered Goal Vicinity!!!) ......")
                 self.entered_goal_vicinity = True
 
         plants_tg_txt = "plants_tagged = "+ str(len(self.plants_tagged))
@@ -920,8 +977,10 @@ class navigator():
             if ( (dist(drone_loc,self.curr_goal)<goal_vicinity) and (abs(elevation - self.prev_elevation) > 0.5) ):
                 # Only proceed to identifying plant if it is not the same one as previously found
                 #       (Based on distance to previously detected)
-                if (dist((d_x,d_y),self.plant_tagged)>10):
+                print("[End] (Sonar detected plant!!!) ......[ plant_tagged = ",self.plant_tagged," ] dist = ",dist((d_x,d_y),self.plant_tagged))
+                if ( ( dist((d_x,d_y),self.plant_tagged)>10 ) or ( self.plant_tagged==(0,0) ) ):
                     prob_plant = (-d_x + c_x , d_y + c_y)
+                    print("[End] (Plant Tagged!!!) ......")
                     # Displaying detected plant using Sonar on Map (Imp 4 future reference)
                     cv2.circle(c_slam_map, prob_plant, 2, (255,0,0),6)
                     cv2.circle(c_slam_map_draw, prob_plant, 2, (255,0,0),6)
@@ -934,7 +993,7 @@ class navigator():
                         cv2.putText(c_slam_map_draw, str(self.est_nxtplant), (50,450), cv2.FONT_HERSHEY_PLAIN, 2, (0,0,255),3)
                         cv2.circle(c_slam_map_draw, self.est_nxtplant, 2, (0,255,0),6)
                 else:
-                    print("Close to previously Found Goal")
+                    print("[navigate] Close to previously Found Goal")
         else:
             # Initial state 
             self.drone_strt_loc_map = self.drone_loc_map
